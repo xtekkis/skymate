@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 
-import { env, reportMissingEnv } from './services/env.js';
+import { config, reportMissingConfig } from './services/config.js';
 import healthRouter from './routes/health.js';
 
 const app = express();
@@ -20,8 +20,8 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-reportMissingEnv();
+reportMissingConfig();
 
-app.listen(env.port, () => {
-  console.log(`[skymate] server listening on http://localhost:${env.port}`);
+app.listen(config.port, () => {
+  console.log(`[skymate] server listening on http://localhost:${config.port}`);
 });
