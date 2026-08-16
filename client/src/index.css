@@ -1,17 +1,268 @@
+/*
+ * Skymate design tokens.
+ *
+ * Palette: cool slate neutrals with a single warm accent, reserved for the
+ * search CTA and nothing else. Chrome (header) stays dark in both themes;
+ * the content area follows the theme.
+ *
+ * Radius rule, applied everywhere: controls 8px, cards and panels 14px,
+ * status pills fully rounded. No other values.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Neutrals */
+  --bg: oklch(0.985 0.003 255);
+  --surface: oklch(1 0 0 / 1);
+  --surface-sunken: oklch(0.965 0.004 255);
+  --border: oklch(0.905 0.006 255);
+  --border-strong: oklch(0.84 0.008 255);
+
+  --text: oklch(0.24 0.017 260);
+  --text-muted: oklch(0.52 0.014 258);
+  --text-faint: oklch(0.64 0.011 258);
+
+  /* Chrome stays dark regardless of theme */
+  --chrome-bg: oklch(0.215 0.018 262);
+  --chrome-text: oklch(0.97 0.003 260);
+  --chrome-muted: oklch(0.72 0.012 260);
+  --chrome-border: oklch(0.31 0.019 262);
+
+  /* Single accent, dark text on top for AA contrast */
+  --accent: oklch(0.7 0.163 48);
+  --accent-hover: oklch(0.655 0.172 45);
+  --accent-quiet: oklch(0.96 0.032 60);
+  --accent-text: oklch(0.2 0.03 55);
+
+  /* Status, always paired with an icon or label so colour is never the only signal */
+  --ok: oklch(0.62 0.13 155);
+  --warn: oklch(0.72 0.145 75);
+  --danger: oklch(0.58 0.17 25);
+  --info: oklch(0.62 0.11 240);
+
+  /* Shadows tinted toward the background hue, never pure black */
+  --shadow-sm: 0 1px 2px oklch(0.24 0.017 260 / 0.06);
+  --shadow-md: 0 2px 4px oklch(0.24 0.017 260 / 0.05), 0 8px 20px oklch(0.24 0.017 260 / 0.07);
+
+  /* Radius */
+  --radius-control: 8px;
+  --radius-panel: 14px;
+  --radius-pill: 999px;
+
+  /* Spacing, 4px base */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Type */
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: clamp(2rem, 1.4rem + 2.2vw, 2.75rem);
+
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+
+  /* Layout */
+  --page-max: 1200px;
+  --header-height: 64px;
+  --z-header: 100;
+  --z-overlay: 200;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: oklch(0.185 0.015 262);
+    --surface: oklch(0.225 0.017 262);
+    --surface-sunken: oklch(0.16 0.014 262);
+    --border: oklch(0.31 0.017 262);
+    --border-strong: oklch(0.39 0.019 262);
+
+    --text: oklch(0.96 0.004 260);
+    --text-muted: oklch(0.75 0.012 260);
+    --text-faint: oklch(0.63 0.013 260);
+
+    --chrome-bg: oklch(0.15 0.014 262);
+    --chrome-border: oklch(0.26 0.016 262);
+
+    --accent-quiet: oklch(0.3 0.055 55);
+
+    --ok: oklch(0.72 0.13 155);
+    --warn: oklch(0.79 0.14 78);
+    --danger: oklch(0.68 0.16 25);
+    --info: oklch(0.71 0.11 240);
+
+    --shadow-sm: 0 1px 2px oklch(0.1 0.01 262 / 0.5);
+    --shadow-md: 0 2px 4px oklch(0.1 0.01 262 / 0.4), 0 8px 20px oklch(0.1 0.01 262 / 0.45);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: oklch(0.185 0.015 262);
+  --surface: oklch(0.225 0.017 262);
+  --surface-sunken: oklch(0.16 0.014 262);
+  --border: oklch(0.31 0.017 262);
+  --border-strong: oklch(0.39 0.019 262);
+
+  --text: oklch(0.96 0.004 260);
+  --text-muted: oklch(0.75 0.012 260);
+  --text-faint: oklch(0.63 0.013 260);
+
+  --chrome-bg: oklch(0.15 0.014 262);
+  --chrome-border: oklch(0.26 0.016 262);
+
+  --accent-quiet: oklch(0.3 0.055 55);
+
+  --ok: oklch(0.72 0.13 155);
+  --warn: oklch(0.79 0.14 78);
+  --danger: oklch(0.68 0.16 25);
+  --info: oklch(0.71 0.11 240);
+
+  --shadow-sm: 0 1px 2px oklch(0.1 0.01 262 / 0.5);
+  --shadow-md: 0 2px 4px oklch(0.1 0.01 262 / 0.4), 0 8px 20px oklch(0.1 0.01 262 / 0.45);
+}
+
+/* Reset */
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+
+p {
+  text-wrap: pretty;
+  max-width: 68ch;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+/* Times, flight numbers and any aligned figures */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Focus */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+::selection {
+  background: var(--accent-quiet);
+  color: var(--text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
