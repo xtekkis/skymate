@@ -1,0 +1,58 @@
+/* Chrome: stays dark in both themes, so it uses the theme-independent tokens. */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--header-height);
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.header__brand {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--chrome-text);
+  text-decoration: none;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.header__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--chrome-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.header__link:hover {
+  color: var(--chrome-text);
+  background: oklch(1 0 0 / 0.07);
+}
+
+.header__link--active {
+  color: var(--chrome-text);
+  background: oklch(1 0 0 / 0.11);
+}
