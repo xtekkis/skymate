@@ -12,6 +12,20 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
     />
+    <script>
+      // Applies a saved theme before first paint so the page never flashes the
+      // wrong one. No saved value means the CSS follows prefers-color-scheme.
+      (function () {
+        try {
+          var saved = localStorage.getItem('skymate-theme');
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+          }
+        } catch (e) {
+          /* private mode, storage unavailable */
+        }
+      })();
+    </script>
     <title>Skymate</title>
   </head>
   <body>

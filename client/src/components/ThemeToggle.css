@@ -1,0 +1,22 @@
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border-radius: var(--radius-control);
+  color: var(--chrome-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.theme-toggle:hover {
+  color: var(--chrome-text);
+  background: oklch(1 0 0 / 0.07);
+}
+
+.theme-toggle:active {
+  scale: 0.94;
+}
