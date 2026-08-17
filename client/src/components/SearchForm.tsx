@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { useRef, useState, type FormEvent } from 'react';
+import { MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
 
 import type { FlightDirection, SearchParams } from '../models';
 import './SearchForm.css';
@@ -7,6 +7,9 @@ import './SearchForm.css';
 interface SearchFormProps {
   onSearch: (params: SearchParams) => void;
 }
+
+type FieldName = 'airport' | 'date' | 'time';
+type Errors = Partial<Record<FieldName, string>>;
 
 /** AeroDataBox caps a query window at 12 hours. */
 const WINDOWS = [4, 8, 12] as const;
@@ -32,15 +35,61 @@ function addHours(date: string, time: string, hours: number) {
   return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
 }
 
+function validate(values: { airport: string; date: string; time: string }): Errors {
+  const errors: Errors = {};
+  const airport = values.airport.trim().toUpperCase();
+
+  if (!airport) {
+    errors.airport = 'Enter an airport code.';
+  } else if (!/^[A-Z]{3}$/.test(airport)) {
+    errors.airport = 'Use a 3-letter IATA code, for example LHR.';
+  }
+
+  if (!values.date) errors.date = 'Choose a date.';
+  if (!values.time) errors.time = 'Choose a start time.';
+
+  return errors;
+}
+
 export default function SearchForm({ onSearch }: SearchFormProps) {
   const [airport, setAirport] = useState('');
   const [direction, setDirection] = useState<FlightDirection>('departure');
   const [date, setDate] = useState(todayLocal);
   const [time, setTime] = useState('08:00');
   const [windowHours, setWindowHours] = useState<number>(12);
+  const [errors, setErrors] = useState<Errors>({});
+
+  const airportRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const timeRef = useRef<HTMLInputElement>(null);
+  const refs = { airport: airportRef, date: dateRef, time: timeRef };
+
+  const values = { airport, date, time };
+
+  /** Validates on blur, so an error never appears while the field is still being typed. */
+  function handleBlur(field: FieldName) {
+    const next = validate(values);
+    setErrors((current) => ({ ...current, [field]: next[field] }));
+  }
+
+  /** Once a field is showing an error, re-check it as the user types so it clears on fix. */
+  function revalidate(field: FieldName, patch: Partial<typeof values>) {
+    if (!errors[field]) return;
+    const next = validate({ ...values, ...patch });
+    setErrors((current) => ({ ...current, [field]: next[field] }));
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    const found = validate(values);
+    setErrors(found);
+
+    const firstInvalid = (['airport', 'date', 'time'] as FieldName[]).find((field) => found[field]);
+    if (firstInvalid) {
+      refs[firstInvalid].current?.focus();
+      return;
+    }
 
     onSearch({
       airport: airport.trim().toUpperCase(),
@@ -50,8 +99,18 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
     });
   }
 
+  function inputClass(field: FieldName, extra = '') {
+    return [
+      'search__input',
+      extra,
+      errors[field] ? 'search__input--invalid' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+
   return (
-    <form className="search" onSubmit={handleSubmit}>
+    <form className="search" onSubmit={handleSubmit} noValidate>
       <div className="search__grid">
         <div className="search__field search__field--airport">
           <label className="search__label" htmlFor="search-airport">
@@ -59,15 +118,32 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
           </label>
           <input
             id="search-airport"
-            className="search__input search__input--code tabular"
+            ref={refs.airport}
+            className={inputClass('airport', 'search__input--code tabular')}
             value={airport}
-            onChange={(event) => setAirport(event.target.value.toUpperCase().slice(0, 3))}
+            onChange={(event) => {
+              const next = event.target.value.toUpperCase().slice(0, 3);
+              setAirport(next);
+              revalidate('airport', { airport: next });
+            }}
+            onBlur={() => handleBlur('airport')}
             maxLength={3}
             autoComplete="off"
             spellCheck={false}
             required
+            aria-invalid={Boolean(errors.airport)}
+            aria-describedby="search-airport-note"
           />
-          <p className="search__hint">3-letter IATA code, for example LHR</p>
+          {errors.airport ? (
+            <p className="search__error" id="search-airport-note" role="alert">
+              <WarningCircle size={14} weight="fill" aria-hidden="true" />
+              {errors.airport}
+            </p>
+          ) : (
+            <p className="search__hint" id="search-airport-note">
+              3-letter IATA code, for example LHR
+            </p>
+          )}
         </div>
 
         <fieldset className="search__field search__field--direction">
@@ -100,12 +176,25 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
           </label>
           <input
             id="search-date"
-            className="search__input"
+            ref={refs.date}
+            className={inputClass('date')}
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => {
+              setDate(event.target.value);
+              revalidate('date', { date: event.target.value });
+            }}
+            onBlur={() => handleBlur('date')}
             required
+            aria-invalid={Boolean(errors.date)}
+            aria-describedby={errors.date ? 'search-date-error' : undefined}
           />
+          {errors.date && (
+            <p className="search__error" id="search-date-error" role="alert">
+              <WarningCircle size={14} weight="fill" aria-hidden="true" />
+              {errors.date}
+            </p>
+          )}
         </div>
 
         <div className="search__field">
@@ -114,12 +203,25 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
           </label>
           <input
             id="search-time"
-            className="search__input tabular"
+            ref={refs.time}
+            className={inputClass('time', 'tabular')}
             type="time"
             value={time}
-            onChange={(event) => setTime(event.target.value)}
+            onChange={(event) => {
+              setTime(event.target.value);
+              revalidate('time', { time: event.target.value });
+            }}
+            onBlur={() => handleBlur('time')}
             required
+            aria-invalid={Boolean(errors.time)}
+            aria-describedby={errors.time ? 'search-time-error' : undefined}
           />
+          {errors.time && (
+            <p className="search__error" id="search-time-error" role="alert">
+              <WarningCircle size={14} weight="fill" aria-hidden="true" />
+              {errors.time}
+            </p>
+          )}
         </div>
 
         <div className="search__field">
