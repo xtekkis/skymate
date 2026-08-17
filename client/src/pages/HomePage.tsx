@@ -1,25 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 
-import { getHealth } from '../services/api';
+import SearchForm from '../components/SearchForm';
+import type { SearchParams } from '../models';
 
-type ServerState = 'checking' | 'online' | 'offline';
-
-/** Placeholder body. The search form and results board land in later commits. */
 export default function HomePage() {
-  const [server, setServer] = useState<ServerState>('checking');
-
-  useEffect(() => {
-    let active = true;
-
-    getHealth()
-      .then(() => active && setServer('online'))
-      .catch(() => active && setServer('offline'));
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [search, setSearch] = useState<SearchParams | null>(null);
 
   return (
     <motion.main
@@ -29,8 +15,18 @@ export default function HomePage() {
       transition={{ duration: 0.4 }}
     >
       <h1>Flight schedules</h1>
-      <p>Search live departures and arrivals by airport.</p>
-      <p>Server: {server}</p>
+      <p className="page__lead">
+        Live departures and arrivals for any airport, with status, terminal and aircraft.
+      </p>
+
+      <SearchForm onSearch={setSearch} />
+
+      {/* Temporary readout. The results board replaces this once the API route exists. */}
+      {search && (
+        <p className="tabular" style={{ marginTop: 'var(--space-5)' }}>
+          {search.airport} {search.direction}s from {search.fromLocal} to {search.toLocal}
+        </p>
+      )}
     </motion.main>
   );
 }
