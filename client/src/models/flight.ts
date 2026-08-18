@@ -25,7 +25,7 @@ export interface Airport {
 }
 
 export interface Flight {
-  /** Flight number plus scheduled time — stable enough to key a list on. */
+  /** Flight number plus scheduled time, stable enough to key a list on. */
   id: string;
   /** Airline-facing number, e.g. "BA 117". */
   number: string;
@@ -33,10 +33,17 @@ export interface Flight {
   direction: FlightDirection;
   /** The counterpart airport: destination for departures, origin for arrivals. */
   counterpart: Airport;
-  /** ISO 8601, UTC. */
+  /** ISO 8601, UTC. Use for sorting and comparison. */
   scheduledTime: string;
+  /**
+   * ISO 8601 carrying the airport's own offset, e.g. "2026-08-16T08:00+01:00".
+   * Use for display so times read the way the terminal board does.
+   */
+  scheduledLocal?: string;
   /** ISO 8601, UTC. Present once the airline revises the schedule. */
   revisedTime?: string;
+  /** Revised time in the airport's local offset. */
+  revisedLocal?: string;
   status: FlightStatus;
   terminal?: string;
   gate?: string;

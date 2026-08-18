@@ -31,6 +31,17 @@ function toIso(stamp) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
+/**
+ * Keeps the airport's own wall-clock time and offset ("2026-08-16T08:00+01:00")
+ * rather than converting. A board has to read the way the terminal screen does,
+ * which is neither UTC nor whatever timezone the browser happens to be in.
+ */
+function toLocalIso(stamp) {
+  if (!stamp?.local) return undefined;
+  const normalized = String(stamp.local).replace(' ', 'T');
+  return Number.isNaN(new Date(normalized).getTime()) ? undefined : normalized;
+}
+
 function toAirport(raw) {
   return {
     iata: raw?.iata ?? '',
@@ -56,7 +67,9 @@ export function toFlight(raw, direction) {
     direction,
     counterpart: toAirport(raw?.movement?.airport),
     scheduledTime,
+    scheduledLocal: toLocalIso(raw?.movement?.scheduledTime),
     revisedTime: toIso(raw?.movement?.revisedTime),
+    revisedLocal: toLocalIso(raw?.movement?.revisedTime),
     status: toStatus(raw?.status),
     terminal: raw?.movement?.terminal,
     gate: raw?.movement?.gate,
