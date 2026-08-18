@@ -46,7 +46,8 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
   );
   url.searchParams.set('direction', isArrival ? 'Arrival' : 'Departure');
   url.searchParams.set('withCancelled', 'true');
-  url.searchParams.set('withCodeshared', 'true');
+  // Codeshares repeat the same physical flight under other airlines' numbers.
+  url.searchParams.set('withCodeshared', 'false');
   url.searchParams.set('withCargo', 'false');
   url.searchParams.set('withPrivate', 'false');
   url.searchParams.set('withLocation', 'false');
