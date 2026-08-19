@@ -1,11 +1,13 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
+import { CircleNotch, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
 
 import type { FlightDirection, SearchParams } from '../models';
 import './SearchForm.css';
 
 interface SearchFormProps {
   onSearch: (params: SearchParams) => void;
+  /** Owned by the page, since the page owns the request. */
+  isSearching?: boolean;
 }
 
 type FieldName = 'airport' | 'date' | 'time';
@@ -51,7 +53,7 @@ function validate(values: { airport: string; date: string; time: string }): Erro
   return errors;
 }
 
-export default function SearchForm({ onSearch }: SearchFormProps) {
+export default function SearchForm({ onSearch, isSearching = false }: SearchFormProps) {
   const [airport, setAirport] = useState('');
   const [direction, setDirection] = useState<FlightDirection>('departure');
   const [date, setDate] = useState(todayLocal);
@@ -242,9 +244,18 @@ export default function SearchForm({ onSearch }: SearchFormProps) {
           </select>
         </div>
 
-        <button className="search__submit" type="submit">
-          <MagnifyingGlass size={18} weight="bold" />
-          Search
+        <button className="search__submit" type="submit" disabled={isSearching}>
+          {isSearching ? (
+            <>
+              <CircleNotch className="search__spinner" size={18} weight="bold" aria-hidden="true" />
+              Searching
+            </>
+          ) : (
+            <>
+              <MagnifyingGlass size={18} weight="bold" aria-hidden="true" />
+              Search
+            </>
+          )}
         </button>
       </div>
     </form>

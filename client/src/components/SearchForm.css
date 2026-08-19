@@ -180,3 +180,13 @@
 .search__submit:active {
   translate: 0 1px;
 }
+
+.search__spinner {
+  animation: search-spin 0.8s linear infinite;
+}
+
+@keyframes search-spin {
+  to {
+    rotate: 360deg;
+  }
+}

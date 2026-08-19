@@ -49,7 +49,7 @@ export default function HomePage() {
         Live departures and arrivals for any airport, with status, terminal and aircraft.
       </p>
 
-      <SearchForm onSearch={handleSearch} />
+      <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} />
 
       <div className="results" aria-live="polite" aria-busy={phase === 'loading'}>
         {phase === 'loading' && (
