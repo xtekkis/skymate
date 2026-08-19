@@ -73,6 +73,16 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
     throw translate(response.status);
   }
 
-  const body = await response.json();
+  // An empty window comes back with an empty body, not an empty array.
+  const text = await response.text();
+  if (!text.trim()) return [];
+
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    throw new UpstreamError('Flight data could not be read.', 502);
+  }
+
   return body[isArrival ? 'arrivals' : 'departures'] ?? [];
 }
