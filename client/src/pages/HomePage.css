@@ -1,0 +1,104 @@
+.results {
+  margin-top: var(--space-6);
+}
+
+.results__count {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* Notices: empty and error share a shape so the page does not jump between them. */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  color: var(--text-muted);
+}
+
+.notice--error {
+  border-color: color-mix(in oklch, var(--danger) 40%, var(--border));
+  color: var(--danger);
+}
+
+.notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notice__title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.notice--error .notice__title {
+  color: var(--danger);
+}
+
+.notice__body {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+/* Skeleton: mirrors the board's row rhythm rather than spinning. */
+
+.skeleton {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.skeleton__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.skeleton__row:first-child {
+  border-top: none;
+}
+
+.skeleton__bar {
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--border) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s var(--ease-out) infinite;
+}
+
+.skeleton__bar--time {
+  width: 44px;
+}
+.skeleton__bar--number {
+  width: 72px;
+}
+.skeleton__bar--airline {
+  flex: 1;
+  max-width: 220px;
+}
+.skeleton__bar--status {
+  width: 68px;
+  margin-left: auto;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
