@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 
+import { apiLimiter, flightSearchLimiter } from './middleware/rateLimit.js';
 import { config, reportMissingConfig } from './services/config.js';
 import flightsRouter from './routes/flights.js';
 import healthRouter from './routes/health.js';
@@ -10,8 +11,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Behind a proxy this must be set correctly or the limiter keys every request
+// to the same address. One hop covers the usual single reverse proxy.
+app.set('trust proxy', 1);
+app.use('/api', apiLimiter);
+
 app.use('/api/health', healthRouter);
-app.use('/api/flights', flightsRouter);
+app.use('/api/flights', flightSearchLimiter, flightsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
