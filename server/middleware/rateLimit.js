@@ -1,29 +1,47 @@
 import { rateLimit } from 'express-rate-limit';
 
 /**
- * Broad guard over everything under /api. Generous on purpose: this exists to
- * stop abuse, not to throttle ordinary use.
+ * Tiers are sized by what a request costs us, not by how it looks. One factory
+ * so the shared options stay identical and adding a tier is three lines.
  */
-export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many requests. Try again shortly.' },
+function tier({ windowMs, limit, message }) {
+  return rateLimit({
+    windowMs,
+    limit,
+    message: { error: message },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  });
+}
+
+/**
+ * Health costs nothing: no upstream call, no quota, no storage. Generous enough
+ * for a monitor to poll about once a second, and separate so that polling never
+ * eats the allowance the real endpoints depend on.
+ */
+export const healthLimiter = tier({
+  windowMs: 60 * 1000,
+  limit: 60,
+  message: 'Too many requests. Try again shortly.',
 });
 
 /**
- * Flight search is the expensive path. Every cache miss spends AeroDataBox
- * quota against a budget of roughly 600 units a month, so an open endpoint is
- * a way to burn the month in about a minute.
- *
- * The cache does not protect this on its own: it keys on the full URL, so
- * varying one minute of the window produces a fresh key every request.
+ * Catch-all for anything under /api without a tier of its own. Broad enough
+ * that ordinary use never meets it, narrow enough to stop a script.
  */
-export const flightSearchLimiter = rateLimit({
+export const apiLimiter = tier({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  message: 'Too many requests. Try again shortly.',
+});
+
+/**
+ * Flight search spends AeroDataBox quota on every cache miss, against a budget
+ * of roughly 600 units a month. The cache does not protect it on its own: keys
+ * include the full time window, so shifting one minute makes a fresh key.
+ */
+export const flightSearchLimiter = tier({
   windowMs: 5 * 60 * 1000,
   limit: 20,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many searches. Try again in a few minutes.' },
+  message: 'Too many searches. Try again in a few minutes.',
 });
