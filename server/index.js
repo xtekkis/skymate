@@ -8,7 +8,19 @@ import healthRouter from './routes/health.js';
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      // No Origin header means a same-origin request, curl, or a health probe.
+      // Those are not browser cross-origin calls, so there is nothing to block.
+      if (!origin) return callback(null, true);
+
+      // Passing false omits the CORS headers, which is what makes the browser
+      // refuse. Passing an Error would surface as a 500 instead.
+      callback(null, config.allowedOrigins.includes(origin));
+    },
+  }),
+);
 app.use(express.json());
 
 // Behind a proxy this must be set correctly or the limiter keys every request

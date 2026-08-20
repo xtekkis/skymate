@@ -6,8 +6,23 @@ const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 dotenv.config({ path: path.join(serverDir, '.env') });
 
+/**
+ * Comma-separated origins allowed to call the API from a browser. Defaults to
+ * the Vite dev server, so local work needs no configuration and a deployment
+ * that forgets to set this fails closed rather than open.
+ */
+function readAllowedOrigins() {
+  const raw = String(process.env.ALLOWED_ORIGINS ?? '').trim();
+  if (!raw) return ['http://localhost:5173'];
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 export const config = {
   port: Number(process.env.PORT) || 3001,
+  allowedOrigins: readAllowedOrigins(),
   rapidApiKey: process.env.RAPIDAPI_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 };
