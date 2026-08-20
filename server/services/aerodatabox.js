@@ -1,8 +1,15 @@
+import { createTtlCache } from './cache.js';
 import { config } from './config.js';
 
 const API_HOST = 'aerodatabox.p.rapidapi.com';
 const API_BASE = `https://${API_HOST}`;
 const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * Schedules shift as flights are revised, so hold them briefly. Long enough to
+ * absorb a refresh or a repeated search, short enough that a delay still shows.
+ */
+const scheduleCache = createTtlCache({ ttlMs: 60_000, maxEntries: 50 });
 
 /** Carries the status the route layer should answer with. */
 export class UpstreamError extends Error {
@@ -52,6 +59,11 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
   url.searchParams.set('withPrivate', 'false');
   url.searchParams.set('withLocation', 'false');
 
+  // The URL carries every query parameter and no credentials, so it keys cleanly.
+  const cacheKey = url.toString();
+  const cached = scheduleCache.get(cacheKey);
+  if (cached) return cached;
+
   let response;
   try {
     response = await fetch(url, {
@@ -75,7 +87,10 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
 
   // An empty window comes back with an empty body, not an empty array.
   const text = await response.text();
-  if (!text.trim()) return [];
+  if (!text.trim()) {
+    scheduleCache.set(cacheKey, Object.freeze([]));
+    return [];
+  }
 
   let body;
   try {
@@ -84,5 +99,10 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
     throw new UpstreamError('Flight data could not be read.', 502);
   }
 
-  return body[isArrival ? 'arrivals' : 'departures'] ?? [];
+  // Frozen because callers share this array: an in-place sort would corrupt the
+  // cache for everyone. Shallow, which is enough to stop the mutating methods.
+  const rows = Object.freeze(body[isArrival ? 'arrivals' : 'departures'] ?? []);
+
+  scheduleCache.set(cacheKey, rows);
+  return rows;
 }
