@@ -37,9 +37,29 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.use((err, _req, res, _next) => {
-  console.error('[skymate]', err);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+app.use((err, req, res, _next) => {
+  const status = Number(err.status) || 500;
+
+  console.error(`[skymate] ${req.method} ${req.originalUrl} -> ${status}`, err);
+
+  // Body parser failures are client mistakes, but its messages quote the body
+  // back, so they get their own wording.
+  if (err.type === 'entity.parse.failed') {
+    res.status(400).json({ error: 'Request body is not valid JSON.' });
+    return;
+  }
+
+  if (err.type === 'entity.too.large') {
+    res.status(413).json({ error: 'Request body is too large.' });
+    return;
+  }
+
+  // 4xx messages are written deliberately for clients. 5xx messages come from
+  // wherever the bug was, and can carry file paths, queries or library
+  // internals, so they stay in the log.
+  res.status(status).json({
+    error: status < 500 ? err.message || 'Request failed.' : 'Internal server error.',
+  });
 });
 
 reportMissingConfig();
