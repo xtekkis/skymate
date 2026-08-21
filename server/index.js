@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 
 import { apiLimiter, flightSearchLimiter, healthLimiter } from './middleware/rateLimit.js';
 import { config, reportMissingConfig } from './services/config.js';
@@ -7,6 +8,15 @@ import flightsRouter from './routes/flights.js';
 import healthRouter from './routes/health.js';
 
 const app = express();
+
+app.use(
+  helmet({
+    // This process answers JSON, never HTML, so the browser is meant to read it
+    // from the frontend's origin. same-origin (the default) is the wrong claim
+    // for an API, and the dev proxy would hide the mistake until deployment.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
 
 app.use(
   cors({
