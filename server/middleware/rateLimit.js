@@ -36,6 +36,17 @@ export const apiLimiter = tier({
 });
 
 /**
+ * Chat is the only endpoint billed per token, against a small prepaid balance.
+ * Tighter than flight search because a cache cannot absorb a repeat: every
+ * message is a fresh completion.
+ */
+export const chatLimiter = tier({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  message: 'Too many messages. Try again in a few minutes.',
+});
+
+/**
  * Flight search spends AeroDataBox quota on every cache miss, against a budget
  * of roughly 600 units a month. The cache does not protect it on its own: keys
  * include the full time window, so shifting one minute makes a fresh key.

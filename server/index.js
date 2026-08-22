@@ -2,9 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 
-import { apiLimiter, flightSearchLimiter, healthLimiter } from './middleware/rateLimit.js';
+import { apiLimiter, chatLimiter, flightSearchLimiter, healthLimiter } from './middleware/rateLimit.js';
 import { registerDefaultProviders } from './services/ai/index.js';
 import { config, reportMissingConfig } from './services/config.js';
+import chatRouter from './routes/chat.js';
 import flightsRouter from './routes/flights.js';
 import healthRouter from './routes/health.js';
 
@@ -43,6 +44,7 @@ app.use('/api/health', healthLimiter, healthRouter);
 
 app.use('/api', apiLimiter);
 app.use('/api/flights', flightSearchLimiter, flightsRouter);
+app.use('/api/chat', chatLimiter, chatRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
