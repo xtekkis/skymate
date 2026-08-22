@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 import { apiLimiter, flightSearchLimiter, healthLimiter } from './middleware/rateLimit.js';
+import { registerDefaultProviders } from './services/ai/index.js';
 import { config, reportMissingConfig } from './services/config.js';
 import flightsRouter from './routes/flights.js';
 import healthRouter from './routes/health.js';
@@ -73,6 +74,13 @@ app.use((err, req, res, _next) => {
 });
 
 reportMissingConfig();
+
+const aiProviders = registerDefaultProviders();
+console.log(
+  aiProviders.length > 0
+    ? `[skymate] assistant providers: ${aiProviders.join(', ')}`
+    : '[skymate] no assistant provider configured',
+);
 
 app.listen(config.port, () => {
   console.log(`[skymate] server listening on http://localhost:${config.port}`);
