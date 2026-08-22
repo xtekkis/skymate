@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
 import { ProviderError } from './provider.js';
 
-const MODEL = 'claude-opus-5';
+const MODEL = 'claude-sonnet-5';
 
 /**
  * Answering travel questions is not reasoning-heavy work, and effort is the
@@ -77,17 +77,13 @@ export const anthropicProvider = {
     let response;
 
     try {
-      response = await getClient().beta.messages.create({
+      response = await getClient().messages.create({
         model: MODEL,
         max_tokens: maxTokens,
         system,
         messages,
+        thinking: { type: 'adaptive' },
         output_config: { effort: EFFORT },
-        // Routes a safety decline onto another Claude model inside the same
-        // call. Separate from our own provider fallback, which handles a
-        // provider being down rather than declining.
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
       });
     } catch (error) {
       throw toProviderError(error);
