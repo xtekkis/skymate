@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import type { Flight, FlightDirection, SearchParams } from '../models';
+import type { Flight, FlightDirection, Message, SearchParams } from '../models';
 
 /** Requests go to /api and are proxied to the Express server in dev (see vite.config.ts). */
 export const api = axios.create({
@@ -43,6 +43,23 @@ export async function searchFlights(params: SearchParams): Promise<FlightSearchR
   });
 
   return data;
+}
+
+export interface ChatResponse {
+  reply: string;
+}
+
+/**
+ * Sends the conversation and returns the assistant's reply. Only role and
+ * content go over the wire; timestamps are ours for rendering, and the server
+ * caps history anyway.
+ */
+export async function sendChat(messages: Pick<Message, 'role' | 'content'>[]): Promise<string> {
+  const { data } = await api.post<ChatResponse>('/chat', {
+    messages: messages.map(({ role, content }) => ({ role, content })),
+  });
+
+  return data.reply;
 }
 
 /** Shape the Express error handlers return. */
