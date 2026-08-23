@@ -1,4 +1,5 @@
 import { anthropicProvider } from './anthropic.js';
+import { groqProvider } from './groq.js';
 import { availableProviders, registerProvider, resetProviders } from './provider.js';
 
 export { chat, NoProviderError, ProviderError } from './provider.js';
@@ -18,6 +19,7 @@ export { buildSystemPrompt } from './systemPrompt.js';
 export function registerDefaultProviders() {
   resetProviders();
   registerProvider(anthropicProvider);
+  registerProvider(groqProvider);
 
   return availableProviders().map((provider) => provider.name);
 }

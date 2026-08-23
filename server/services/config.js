@@ -25,6 +25,7 @@ export const config = {
   allowedOrigins: readAllowedOrigins(),
   rapidApiKey: process.env.RAPIDAPI_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  groqApiKey: process.env.GROQ_API_KEY,
 };
 
 /**
