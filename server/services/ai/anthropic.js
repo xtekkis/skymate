@@ -32,10 +32,35 @@ function getClient() {
  * A bad API key is permanent but another vendor's key may be fine, so it counts.
  * A malformed request does not: it would fail identically anywhere.
  */
-function toProviderError(error) {
+/**
+ * An exhausted balance arrives as a 400, which is indistinguishable by status
+ * from a malformed request. The difference matters: a bad request fails the
+ * same way everywhere, but an empty wallet is precisely when another provider
+ * should take over. There is no distinct error class, so this reads the
+ * message. Kept deliberately broad, since a false positive only costs one
+ * wasted attempt on the fallback.
+ */
+export function isBillingFailure(error) {
+  if (error?.status === 402) return true;
+
+  return /credit balance|insufficient (?:credit|funds)|billing|quota|payment/i.test(
+    String(error?.message ?? ''),
+  );
+}
+
+export function toProviderError(error) {
   const base = { provider: 'anthropic', cause: error };
 
   if (error instanceof Anthropic.BadRequestError) {
+    if (isBillingFailure(error)) {
+      console.error('[skymate] Anthropic will not serve this account, falling through:', error.message);
+      return new ProviderError('The assistant is unavailable right now.', {
+        ...base,
+        status: 502,
+        retryable: true,
+      });
+    }
+
     return new ProviderError('The assistant could not handle that request.', {
       ...base,
       status: 400,
