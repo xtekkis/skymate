@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { toFlight, toFlights } from './flightMapper.js';
+import { toFlight, toFlights, toTrackedFlight, toTrackedFlights } from './flightMapper.js';
 
 /**
  * Fixtures copied from real AeroDataBox responses, so the shapes here are what
@@ -136,5 +136,112 @@ describe('toFlights', () => {
   it('stamps every flight with the direction it was queried for', () => {
     const flights = toFlights([row(), row()], 'arrival');
     assert.ok(flights.every((flight) => flight.direction === 'arrival'));
+  });
+});
+
+/**
+ * Fixture built from a real /flights/number response. The sparse arrival is
+ * not a simplification: that is exactly what the API returns for a flight a
+ * couple of days out.
+ */
+function leg(overrides = {}) {
+  return {
+    departure: {
+      airport: {
+        icao: 'EGLL',
+        iata: 'LHR',
+        name: 'London Heathrow',
+        countryCode: 'GB',
+        timeZone: 'Europe/London',
+      },
+      scheduledTime: { utc: '2026-08-25 07:20Z', local: '2026-08-25T08:20+01:00' },
+      terminal: '3',
+      quality: ['Basic'],
+    },
+    arrival: {
+      airport: { name: 'New York' },
+      quality: [],
+    },
+    lastUpdatedUtc: '2026-07-15 05:36Z',
+    number: 'BA 117',
+    status: 'Expected',
+    codeshareStatus: 'Unknown',
+    isCargo: false,
+    aircraft: { model: 'Airbus A330-900' },
+    airline: { name: 'British Airways', iata: 'BA', icao: 'BAW' },
+    ...overrides,
+  };
+}
+
+describe('toTrackedFlight', () => {
+  it('maps both ends of a leg', () => {
+    const flight = toTrackedFlight(leg());
+
+    assert.equal(flight.number, 'BA 117');
+    assert.equal(flight.airline, 'British Airways');
+    assert.equal(flight.status, 'Expected');
+    assert.equal(flight.aircraft, 'Airbus A330-900');
+    assert.equal(flight.departure.airport.iata, 'LHR');
+    assert.equal(flight.departure.terminal, '3');
+  });
+
+  it('handles a sparse arrival without inventing anything', () => {
+    // The real API sends only an airport name on the far end days ahead.
+    const flight = toTrackedFlight(leg());
+
+    assert.equal(flight.arrival.airport.name, 'New York');
+    assert.equal(flight.arrival.airport.iata, '', 'no code is known yet');
+    assert.equal(flight.arrival.scheduledTime, undefined);
+    assert.equal(flight.arrival.scheduledLocal, undefined);
+    assert.equal(flight.arrival.terminal, undefined);
+  });
+
+  it('normalises departure times the same way the board does', () => {
+    const flight = toTrackedFlight(leg());
+
+    assert.equal(flight.departure.scheduledTime, '2026-08-25T07:20:00.000Z');
+    assert.equal(flight.departure.scheduledLocal, '2026-08-25T08:20+01:00');
+  });
+
+  it('reads the last-updated stamp', () => {
+    assert.equal(toTrackedFlight(leg()).lastUpdated, '2026-07-15T05:36:00.000Z');
+  });
+
+  it('survives a leg with no arrival key at all', () => {
+    const flight = toTrackedFlight(leg({ arrival: undefined }));
+
+    assert.equal(flight.arrival.airport.name, 'Unknown airport');
+    assert.equal(flight.arrival.scheduledTime, undefined);
+  });
+
+  it('narrows an unmodelled status', () => {
+    assert.equal(toTrackedFlight(leg({ status: 'Whatever' })).status, 'Unknown');
+  });
+});
+
+describe('toTrackedFlights', () => {
+  it('returns an empty list for anything that is not a list', () => {
+    for (const input of [undefined, null, {}, 'nope']) {
+      assert.deepEqual(toTrackedFlights(input), []);
+    }
+  });
+
+  it('drops legs with no departure time', () => {
+    const usable = leg();
+    const unusable = leg({ departure: { airport: { name: 'Somewhere' } } });
+
+    assert.equal(toTrackedFlights([usable, unusable]).length, 1);
+  });
+
+  it('orders legs by departure time', () => {
+    const later = leg({
+      number: 'BA 117',
+      departure: { ...leg().departure, scheduledTime: { utc: '2026-08-26 07:20Z', local: '2026-08-26T08:20+01:00' } },
+    });
+
+    assert.deepEqual(
+      toTrackedFlights([later, leg()]).map((flight) => flight.departure.scheduledTime),
+      ['2026-08-25T07:20:00.000Z', '2026-08-26T07:20:00.000Z'],
+    );
   });
 });

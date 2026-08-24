@@ -53,3 +53,44 @@ export interface Flight {
   isCargo: boolean;
   isCodeshare: boolean;
 }
+
+/**
+ * One end of a tracked flight.
+ *
+ * Every field beyond the airport is optional on purpose. AeroDataBox fills
+ * detail in as the day approaches, so a flight several days out often has only
+ * an airport name on the arrival side. Rendering must handle that rather than
+ * showing a row of blanks.
+ */
+export interface FlightEndpoint {
+  airport: Airport;
+  /** ISO 8601, UTC. Use for sorting and comparison. */
+  scheduledTime?: string;
+  /** ISO 8601 with the airport's own offset. Use for display. */
+  scheduledLocal?: string;
+  revisedTime?: string;
+  revisedLocal?: string;
+  terminal?: string;
+  gate?: string;
+  checkInDesk?: string;
+  baggageBelt?: string;
+}
+
+/**
+ * A flight looked up by its number, which names both ends of the journey.
+ * Distinct from Flight, which is one movement on a single airport's board and
+ * names only the counterpart.
+ */
+export interface TrackedFlight {
+  id: string;
+  /** Airline-facing number, e.g. "BA 117". */
+  number: string;
+  airline: string;
+  status: FlightStatus;
+  departure: FlightEndpoint;
+  arrival: FlightEndpoint;
+  aircraft?: string;
+  isCargo: boolean;
+  /** ISO 8601, UTC. When AeroDataBox last refreshed this leg. */
+  lastUpdated?: string;
+}

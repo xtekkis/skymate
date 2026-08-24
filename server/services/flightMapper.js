@@ -90,3 +90,55 @@ export function toFlights(rows, direction) {
     .filter((flight) => Boolean(flight.scheduledTime))
     .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
 }
+
+/**
+ * One end of a tracked flight.
+ *
+ * Either end can be sparse. AeroDataBox fills detail in as the day approaches,
+ * so a flight several days out often carries only an airport name on the
+ * arrival side, with no code, no terminal and no times. Every field here is
+ * therefore optional, and callers must not assume the two ends match.
+ */
+function toEndpoint(raw) {
+  return {
+    airport: toAirport(raw?.airport),
+    scheduledTime: toIso(raw?.scheduledTime),
+    scheduledLocal: toLocalIso(raw?.scheduledTime),
+    revisedTime: toIso(raw?.revisedTime),
+    revisedLocal: toLocalIso(raw?.revisedTime),
+    terminal: raw?.terminal,
+    gate: raw?.gate,
+    checkInDesk: raw?.checkInDesk,
+    baggageBelt: raw?.baggageBelt,
+  };
+}
+
+/** Maps one leg from the flight-number endpoint, which is shaped differently
+ * from an airport board: it names both ends rather than one counterpart. */
+export function toTrackedFlight(raw) {
+  const departure = toEndpoint(raw?.departure);
+  const number = String(raw?.number ?? '').trim();
+
+  return {
+    id: `${number || 'unknown'}@${departure.scheduledTime ?? 'unscheduled'}`,
+    number,
+    airline: raw?.airline?.name ?? 'Unknown airline',
+    status: toStatus(raw?.status),
+    departure,
+    arrival: toEndpoint(raw?.arrival),
+    aircraft: raw?.aircraft?.model,
+    isCargo: Boolean(raw?.isCargo),
+    lastUpdated: toIso({ utc: raw?.lastUpdatedUtc }),
+  };
+}
+
+/**
+ * Maps every leg flying under a number, dropping any with no departure time.
+ * A leg we cannot place in time tells the user nothing useful.
+ */
+export function toTrackedFlights(legs) {
+  return (Array.isArray(legs) ? legs : [])
+    .map((leg) => toTrackedFlight(leg))
+    .filter((flight) => Boolean(flight.departure.scheduledTime))
+    .sort((a, b) => a.departure.scheduledTime.localeCompare(b.departure.scheduledTime));
+}
