@@ -36,35 +36,16 @@ function translate(status) {
 }
 
 /**
- * Fetches one airport's schedule for a local time window, which AeroDataBox
- * caps at 12 hours. Times are local to the airport, formatted YYYY-MM-DDTHH:mm.
- *
- * Returns the raw upstream movement objects. Shaping into the Flight model is
- * the mapper's job, not this one's.
+ * One place for the request, the timeout, and the error translation, so a
+ * second endpoint cannot quietly drift from the first.
  */
-export async function fetchAirportSchedule({ airport, direction, fromLocal, toLocal }) {
+async function requestJson(url) {
   if (!config.rapidApiKey) {
     throw new UpstreamError('Flight data is not configured on this server.', 503);
   }
 
-  const isArrival = direction === 'arrival';
-  const url = new URL(
-    `${API_BASE}/flights/airports/iata/${encodeURIComponent(airport)}/${fromLocal}/${toLocal}`,
-  );
-  url.searchParams.set('direction', isArrival ? 'Arrival' : 'Departure');
-  url.searchParams.set('withCancelled', 'true');
-  // Codeshares repeat the same physical flight under other airlines' numbers.
-  url.searchParams.set('withCodeshared', 'false');
-  url.searchParams.set('withCargo', 'false');
-  url.searchParams.set('withPrivate', 'false');
-  url.searchParams.set('withLocation', 'false');
-
-  // The URL carries every query parameter and no credentials, so it keys cleanly.
-  const cacheKey = url.toString();
-  const cached = scheduleCache.get(cacheKey);
-  if (cached) return cached;
-
   let response;
+
   try {
     response = await fetch(url, {
       headers: {
@@ -85,23 +66,76 @@ export async function fetchAirportSchedule({ airport, direction, fromLocal, toLo
     throw translate(response.status);
   }
 
-  // An empty window comes back with an empty body, not an empty array.
+  // An empty result comes back with an empty body, not an empty structure.
   const text = await response.text();
-  if (!text.trim()) {
-    scheduleCache.set(cacheKey, Object.freeze([]));
-    return [];
-  }
+  if (!text.trim()) return null;
 
-  let body;
   try {
-    body = JSON.parse(text);
+    return JSON.parse(text);
   } catch {
     throw new UpstreamError('Flight data could not be read.', 502);
   }
+}
+
+/**
+ * Looks up every leg flying under one flight number, optionally on a given
+ * local date. The response is a list because a number can fly more than one
+ * leg, and because without a date the API may return neighbouring days.
+ *
+ * Returns the raw legs. Shaping is the mapper's job.
+ */
+export async function fetchFlightByNumber({ number, date }) {
+  // "BA 117" and "ba117" are the same flight; the path wants it unspaced.
+  const normalized = String(number).replace(/\s+/g, '').toUpperCase();
+  const path = date
+    ? `/flights/number/${encodeURIComponent(normalized)}/${encodeURIComponent(date)}`
+    : `/flights/number/${encodeURIComponent(normalized)}`;
+
+  const url = new URL(API_BASE + path);
+  url.searchParams.set('withAircraftImage', 'false');
+  url.searchParams.set('withLocation', 'false');
+
+  const cacheKey = url.toString();
+  const cached = scheduleCache.get(cacheKey);
+  if (cached) return cached;
+
+  const body = await requestJson(url);
+  const legs = Object.freeze(Array.isArray(body) ? body : []);
+
+  scheduleCache.set(cacheKey, legs);
+  return legs;
+}
+
+/**
+ * Fetches one airport's schedule for a local time window, which AeroDataBox
+ * caps at 12 hours. Times are local to the airport, formatted YYYY-MM-DDTHH:mm.
+ *
+ * Returns the raw upstream movement objects. Shaping into the Flight model is
+ * the mapper's job, not this one's.
+ */
+export async function fetchAirportSchedule({ airport, direction, fromLocal, toLocal }) {
+  const isArrival = direction === 'arrival';
+  const url = new URL(
+    `${API_BASE}/flights/airports/iata/${encodeURIComponent(airport)}/${fromLocal}/${toLocal}`,
+  );
+  url.searchParams.set('direction', isArrival ? 'Arrival' : 'Departure');
+  url.searchParams.set('withCancelled', 'true');
+  // Codeshares repeat the same physical flight under other airlines' numbers.
+  url.searchParams.set('withCodeshared', 'false');
+  url.searchParams.set('withCargo', 'false');
+  url.searchParams.set('withPrivate', 'false');
+  url.searchParams.set('withLocation', 'false');
+
+  // The URL carries every query parameter and no credentials, so it keys cleanly.
+  const cacheKey = url.toString();
+  const cached = scheduleCache.get(cacheKey);
+  if (cached) return cached;
+
+  const body = await requestJson(url);
 
   // Frozen because callers share this array: an in-place sort would corrupt the
   // cache for everyone. Shallow, which is enough to stop the mutating methods.
-  const rows = Object.freeze(body[isArrival ? 'arrivals' : 'departures'] ?? []);
+  const rows = Object.freeze(body?.[isArrival ? 'arrivals' : 'departures'] ?? []);
 
   scheduleCache.set(cacheKey, rows);
   return rows;
