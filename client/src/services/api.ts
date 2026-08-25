@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import type { Flight, FlightDirection, Message, SearchParams } from '../models';
+import type { Flight, FlightDirection, Message, SearchParams, TrackedFlight } from '../models';
 
 /** Requests go to /api and are proxied to the Express server in dev (see vite.config.ts). */
 export const api = axios.create({
@@ -60,6 +60,26 @@ export async function sendChat(messages: Pick<Message, 'role' | 'content'>[]): P
   });
 
   return data.reply;
+}
+
+export interface FlightNumberResponse {
+  number: string;
+  date?: string;
+  count: number;
+  flights: TrackedFlight[];
+}
+
+/** Every leg flying under one number. An unknown number returns an empty list. */
+export async function getFlightByNumber(
+  number: string,
+  date?: string,
+): Promise<FlightNumberResponse> {
+  const { data } = await api.get<FlightNumberResponse>(
+    `/flights/number/${encodeURIComponent(number)}`,
+    date ? { params: { date } } : undefined,
+  );
+
+  return data;
 }
 
 /** Shape the Express error handlers return. */
