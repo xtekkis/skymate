@@ -20,8 +20,8 @@
   --border-strong: oklch(0.84 0.008 255);
 
   --text: oklch(0.24 0.017 260);
-  --text-muted: oklch(0.52 0.014 258);
-  --text-faint: oklch(0.64 0.011 258);
+  --text-muted: oklch(0.45 0.014 258);
+  --text-faint: oklch(0.535 0.011 258);
 
   /* Chrome stays dark regardless of theme */
   --chrome-bg: oklch(0.215 0.018 262);
