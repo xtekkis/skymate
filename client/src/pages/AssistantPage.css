@@ -168,8 +168,7 @@
   gap: var(--space-2);
   margin-top: var(--space-4);
   padding: var(--space-2);
-  /* Recessed rather than flush with the page: an input should read as a well. */
-  background: var(--surface-sunken);
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-panel);
   transition: border-color var(--duration-fast) var(--ease-out);
@@ -185,7 +184,9 @@
   min-height: 40px;
   max-height: 160px;
   padding: var(--space-2);
-  background: none;
+  /* Its own background, not a transparent hole: the home input has always
+     carried one, and that is the page where the pointer behaved. */
+  background: var(--surface);
   border: none;
   resize: vertical;
   line-height: var(--leading-normal);
