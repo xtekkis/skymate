@@ -1,13 +1,16 @@
 import { Router } from 'express';
 
-import { fetchAirportSchedule, UpstreamError } from '../services/aerodatabox.js';
-import { toFlights } from '../services/flightMapper.js';
+import { fetchAirportSchedule, fetchFlightByNumber, UpstreamError } from '../services/aerodatabox.js';
+import { toFlights, toTrackedFlights } from '../services/flightMapper.js';
 
 const router = Router();
 
 const IATA = /^[A-Z]{3}$/;
 const LOCAL_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const MAX_WINDOW_HOURS = 12;
+
+const FLIGHT_NUMBER = /^[A-Z0-9]{2,3}[0-9]{1,4}[A-Z]?$/;
+const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Validates up front so a malformed request never reaches AeroDataBox and
@@ -51,6 +54,44 @@ router.get('/', async (req, res, next) => {
     const flights = toFlights(raw, direction);
 
     res.json({ airport, direction, from, to, count: flights.length, flights });
+  } catch (error) {
+    if (error instanceof UpstreamError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+/**
+ * A flight number can fly several legs, so this answers with a list. An
+ * unknown number is an empty list rather than a 404: "no such flight" is an
+ * answer, and the client can say so without an error banner.
+ */
+router.get('/number/:number', async (req, res, next) => {
+  // "BA 117" and "ba117" name the same flight.
+  const number = String(req.params.number).replace(/\s+/g, '').toUpperCase();
+  const date = req.query.date ? String(req.query.date) : undefined;
+  const errors = [];
+
+  if (!FLIGHT_NUMBER.test(number)) {
+    errors.push('number must look like a flight number, for example BA117');
+  }
+
+  if (date !== undefined && !LOCAL_DATE.test(date)) {
+    errors.push('date must look like YYYY-MM-DD');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ error: 'Invalid flight number.', details: errors });
+    return;
+  }
+
+  try {
+    const legs = await fetchFlightByNumber({ number, date });
+    const flights = toTrackedFlights(legs);
+
+    res.json({ number, date, count: flights.length, flights });
   } catch (error) {
     if (error instanceof UpstreamError) {
       res.status(error.status).json({ error: error.message });
