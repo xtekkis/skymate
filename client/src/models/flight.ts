@@ -19,7 +19,12 @@ export type FlightStatus =
 export interface Airport {
   iata: string;
   icao?: string;
+  /** Full name, e.g. "London Heathrow". */
   name: string;
+  /** Just the airport, e.g. "Heathrow". */
+  shortName?: string;
+  /** The city it serves, e.g. "London". */
+  municipality?: string;
   countryCode?: string;
   timeZone?: string;
 }
@@ -52,6 +57,8 @@ export interface Flight {
   aircraft?: string;
   isCargo: boolean;
   isCodeshare: boolean;
+  /** True when the aircraft is genuinely being tracked, not just scheduled. */
+  isLive?: boolean;
 }
 
 /**
@@ -70,10 +77,15 @@ export interface FlightEndpoint {
   scheduledLocal?: string;
   revisedTime?: string;
   revisedLocal?: string;
+  /** A prediction rather than a published time. Appears close to the day. */
+  predictedTime?: string;
+  predictedLocal?: string;
   terminal?: string;
   gate?: string;
   checkInDesk?: string;
   baggageBelt?: string;
+  /** True when the aircraft is genuinely being tracked, not just scheduled. */
+  isLive?: boolean;
 }
 
 /**

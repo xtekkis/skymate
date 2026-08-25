@@ -47,9 +47,21 @@ function toAirport(raw) {
     iata: raw?.iata ?? '',
     icao: raw?.icao,
     name: raw?.name ?? 'Unknown airport',
+    // "Heathrow" and "London" read better together than "London Heathrow".
+    shortName: raw?.shortName,
+    municipality: raw?.municipalityName,
     countryCode: raw?.countryCode,
     timeZone: raw?.timeZone,
   };
+}
+
+/**
+ * AeroDataBox tags each end with quality flags. "Live" means it is really
+ * tracking the aircraft; without it the row is only a published schedule, and
+ * the UI should not imply more certainty than that.
+ */
+function isLive(quality) {
+  return Array.isArray(quality) && quality.includes('Live');
 }
 
 function toStatus(value) {
@@ -77,6 +89,7 @@ export function toFlight(raw, direction) {
     aircraft: raw?.aircraft?.model,
     isCargo: Boolean(raw?.isCargo),
     isCodeshare: raw?.codeshareStatus === 'IsCodeshared',
+    isLive: isLive(raw?.movement?.quality),
   };
 }
 
@@ -106,10 +119,14 @@ function toEndpoint(raw) {
     scheduledLocal: toLocalIso(raw?.scheduledTime),
     revisedTime: toIso(raw?.revisedTime),
     revisedLocal: toLocalIso(raw?.revisedTime),
+    // A prediction, not a schedule. Present only close to the day.
+    predictedTime: toIso(raw?.predictedTime),
+    predictedLocal: toLocalIso(raw?.predictedTime),
     terminal: raw?.terminal,
     gate: raw?.gate,
     checkInDesk: raw?.checkInDesk,
     baggageBelt: raw?.baggageBelt,
+    isLive: isLive(raw?.quality),
   };
 }
 
