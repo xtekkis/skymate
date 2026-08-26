@@ -38,8 +38,21 @@
   border-top: none;
 }
 
+.board__row {
+  cursor: pointer;
+}
+
 .board__table tbody tr:hover td {
   background: var(--surface-sunken);
+}
+
+.board__link {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.board__link:hover {
+  text-decoration: underline;
 }
 
 .board__time {

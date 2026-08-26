@@ -1,3 +1,5 @@
+import { Link, useNavigate } from 'react-router-dom';
+
 import type { Flight, FlightDirection, FlightStatus } from '../models';
 import './FlightList.css';
 
@@ -49,7 +51,25 @@ function isRevised(flight: Flight) {
   return Boolean(flight.revisedLocal) && flight.revisedLocal !== flight.scheduledLocal;
 }
 
+/** The number is the real link. The row click is convenience on top of it. */
+function detailHref(flight: Flight) {
+  const date = flight.scheduledLocal?.slice(0, 10) ?? flight.scheduledTime.slice(0, 10);
+  return `/flight/${encodeURIComponent(flight.number)}?date=${date}`;
+}
+
 export default function FlightList({ flights, direction }: FlightListProps) {
+  const navigate = useNavigate();
+
+  /**
+   * Clicking anywhere on the row follows the same link. Clicks that landed on
+   * the anchor itself are ignored, so the browser handles those normally and
+   * middle-click, ctrl-click and "open in new tab" keep working.
+   */
+  function openRow(event: React.MouseEvent<HTMLTableRowElement>, flight: Flight) {
+    if ((event.target as HTMLElement).closest('a')) return;
+    navigate(detailHref(flight));
+  }
+
   return (
     <div className="board">
       <table className="board__table">
@@ -73,7 +93,11 @@ export default function FlightList({ flights, direction }: FlightListProps) {
         </thead>
         <tbody>
           {flights.map((flight) => (
-            <tr key={flight.id}>
+            <tr
+              key={flight.id}
+              className="board__row"
+              onClick={(event) => openRow(event, flight)}
+            >
               <td className="board__time tabular">
                 {isRevised(flight) ? (
                   <>
@@ -85,7 +109,11 @@ export default function FlightList({ flights, direction }: FlightListProps) {
                 )}
               </td>
 
-              <td className="tabular">{flight.number}</td>
+              <td className="tabular">
+                <Link className="board__link" to={detailHref(flight)}>
+                  {flight.number}
+                </Link>
+              </td>
 
               <td className="board__cell--wide">{flight.airline}</td>
 
