@@ -26,6 +26,17 @@ export const healthLimiter = tier({
 });
 
 /**
+ * Airport lookup runs entirely against bundled data, so it costs nothing
+ * upstream. Generous because it fires while someone types, and mounted ahead
+ * of the broad limiter so typing cannot spend the paid endpoints' allowance.
+ */
+export const airportSearchLimiter = tier({
+  windowMs: 5 * 60 * 1000,
+  limit: 300,
+  message: 'Too many searches. Try again shortly.',
+});
+
+/**
  * Catch-all for anything under /api without a tier of its own. Broad enough
  * that ordinary use never meets it, narrow enough to stop a script.
  */

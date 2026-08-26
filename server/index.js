@@ -2,9 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 
-import { apiLimiter, chatLimiter, flightSearchLimiter, healthLimiter } from './middleware/rateLimit.js';
+import {
+  airportSearchLimiter,
+  apiLimiter,
+  chatLimiter,
+  flightSearchLimiter,
+  healthLimiter,
+} from './middleware/rateLimit.js';
 import { registerDefaultProviders } from './services/ai/index.js';
 import { config, reportMissingConfig } from './services/config.js';
+import airportsRouter from './routes/airports.js';
 import chatRouter from './routes/chat.js';
 import flightsRouter from './routes/flights.js';
 import healthRouter from './routes/health.js';
@@ -41,6 +48,7 @@ app.set('trust proxy', 1);
 // Health answers before the broad limiter so monitoring never spends the
 // allowance the paid endpoints rely on.
 app.use('/api/health', healthLimiter, healthRouter);
+app.use('/api/airports', airportSearchLimiter, airportsRouter);
 
 app.use('/api', apiLimiter);
 app.use('/api/flights', flightSearchLimiter, flightsRouter);
