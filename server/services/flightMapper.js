@@ -1,3 +1,5 @@
+import { toAirport } from './airportMapper.js';
+
 /**
  * Turns raw AeroDataBox movement objects into the Flight shape the client
  * models. Upstream fields are frequently absent, so every optional value is
@@ -40,19 +42,6 @@ function toLocalIso(stamp) {
   if (!stamp?.local) return undefined;
   const normalized = String(stamp.local).replace(' ', 'T');
   return Number.isNaN(new Date(normalized).getTime()) ? undefined : normalized;
-}
-
-function toAirport(raw) {
-  return {
-    iata: raw?.iata ?? '',
-    icao: raw?.icao,
-    name: raw?.name ?? 'Unknown airport',
-    // "Heathrow" and "London" read better together than "London Heathrow".
-    shortName: raw?.shortName,
-    municipality: raw?.municipalityName,
-    countryCode: raw?.countryCode,
-    timeZone: raw?.timeZone,
-  };
 }
 
 /**
