@@ -32,8 +32,11 @@ function rank(airport, query) {
   const name = airport.name.toLowerCase();
 
   if (iata === query) return 0;
-  if (municipality === query) return 1;
-  if (municipality.startsWith(query)) return 2;
+
+  // An exact city match and a city prefix share a tier, so runway length decides
+  // between them. Otherwise "tok" surfaces Tok in Alaska ahead of Tokyo purely
+  // because the small one matched exactly.
+  if (municipality === query || municipality.startsWith(query)) return 1;
   if (name.startsWith(query)) return 3;
   if (municipality.includes(query)) return 4;
   if (name.includes(query)) return 5;
@@ -41,9 +44,14 @@ function rank(airport, query) {
 }
 
 /**
- * Orders by how well each entry matches, then by how much extra text the match
- * carries. That second part is what puts London ahead of Londrina: both start
- * with "lond", but "London" has less left over.
+ * Orders by how well each entry matches, then by how major the airport is,
+ * then by how much extra text the match carries.
+ *
+ * Importance has to come before closeness. For "lo" both Lome and London are
+ * prefix matches and "Lome" is the shorter word, so closeness alone puts a
+ * regional airport above Heathrow. Runway length is the signal that fixes it.
+ * Closeness still decides between comparably sized airports, and is the only
+ * tiebreak left when scale is unknown.
  */
 export function rankAirports(airports, query) {
   const needle = String(query ?? '').trim().toLowerCase();
@@ -52,6 +60,9 @@ export function rankAirports(airports, query) {
   return [...airports].sort((a, b) => {
     const byRank = rank(a, needle) - rank(b, needle);
     if (byRank !== 0) return byRank;
+
+    const byScale = (b.scale ?? 0) - (a.scale ?? 0);
+    if (byScale !== 0) return byScale;
 
     const byCity = (a.municipality ?? '').length - (b.municipality ?? '').length;
     if (byCity !== 0) return byCity;

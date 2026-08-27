@@ -20,6 +20,8 @@ const airports = JSON.parse(fs.readFileSync(dataPath, 'utf8')).map((entry) => ({
   name: entry.name,
   municipality: entry.municipality,
   countryCode: entry.country,
+  // Ranking input, not part of the response.
+  scale: entry.scale ?? 0,
   haystack: `${entry.iata} ${entry.name} ${entry.municipality ?? ''}`.toLowerCase(),
 }));
 
@@ -40,7 +42,7 @@ export function searchAirports(query, limit = 8) {
 
   return rankAirports(matches, needle)
     .slice(0, limit)
-    .map(({ haystack, ...airport }) => airport);
+    .map(({ haystack, scale, ...airport }) => airport);
 }
 
 export function airportCount() {

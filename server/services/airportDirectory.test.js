@@ -53,6 +53,23 @@ describe('airport directory', () => {
     assert.deepEqual(Object.keys(first).sort(), ['countryCode', 'iata', 'municipality', 'name']);
   });
 
+  it('surfaces major airports for a short query, not regional lookalikes', () => {
+    // 'lo' matches Lome, Lopez Island and Lolak as well as London and Los
+    // Angeles. Runway length is what separates them.
+    const top = searchAirports('lo', 5).map((airport) => airport.iata);
+    assert.ok(top.includes('LHR') || top.includes('LAX'), `expected a major airport in ${top.join(', ')}`);
+    assert.ok(!top.includes('LPS'), 'Lopez Island should not outrank a hub');
+  });
+
+  it('prefers the bigger airport when a small city matches exactly', () => {
+    // Tok, Alaska is an exact match for 'tok'. Tokyo is what people mean.
+    assert.equal(searchAirports('tok', 3)[0].municipality, 'Tokyo');
+  });
+
+  it('orders the London airports by size', () => {
+    const london = searchAirports('london', 3).map((airport) => airport.iata);
+    assert.equal(london[0], 'LHR', `expected Heathrow first, got ${london.join(', ')}`);
+  });
   it('returns nothing for a query that matches nothing', () => {
     assert.deepEqual(searchAirports('zzzzzzzz'), []);
   });
