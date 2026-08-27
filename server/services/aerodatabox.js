@@ -1,4 +1,5 @@
 import { createTtlCache } from './cache.js';
+import { hasBudget, recordUnits } from './quota.js';
 import { config } from './config.js';
 
 const API_HOST = 'aerodatabox.p.rapidapi.com';
@@ -44,6 +45,15 @@ async function requestJson(url) {
     throw new UpstreamError('Flight data is not configured on this server.', 503);
   }
 
+  // Refuse before spending anything. Running out mid-request produces a wall of
+  // opaque 429s, which reads as broken rather than as finished for the month.
+  if (!hasBudget()) {
+    throw new UpstreamError(
+      'The monthly flight data allowance is used up. It resets at the start of the next cycle.',
+      503,
+    );
+  }
+
   let response;
 
   try {
@@ -61,6 +71,10 @@ async function requestJson(url) {
     console.error('[skymate] AeroDataBox request failed:', error.message);
     throw new UpstreamError('Flight data is unavailable right now.', 502);
   }
+
+  // Read the budget from every response, including failures: a 429 still
+  // reports where we stand.
+  recordUnits(response.headers.get('x-ratelimit-api-units-remaining'));
 
   if (!response.ok) {
     throw translate(response.status);
