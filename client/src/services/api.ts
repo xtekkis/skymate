@@ -108,6 +108,16 @@ interface ApiErrorBody {
 }
 
 /**
+ * The HTTP status behind a failure, when there was one.
+ *
+ * Used to tell a site-wide condition, such as the flight data allowance being
+ * spent, from something wrong with this one request.
+ */
+export function errorStatus(error: unknown): number | undefined {
+  return axios.isAxiosError(error) ? error.response?.status : undefined;
+}
+
+/**
  * Turns a failed request into something worth showing a user. The server
  * already writes messages for people rather than for logs, so prefer its
  * text over anything invented here.

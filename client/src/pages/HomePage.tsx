@@ -5,14 +5,25 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 import FlightList from '../components/FlightList';
 import SearchForm from '../components/SearchForm';
 import type { SearchParams } from '../models';
-import { messageFromError, searchFlights, type FlightSearchResponse } from '../services/api';
+import { useToast } from '../components/toastContext';
+import {
+  errorStatus,
+  messageFromError,
+  searchFlights,
+  type FlightSearchResponse,
+} from '../services/api';
 import './HomePage.css';
 
 type Phase = 'idle' | 'loading' | 'error' | 'done';
 
+/** Statuses that describe the whole app rather than this one request. */
+const SITE_WIDE = new Set([429, 503]);
+
+
 const SKELETON_ROWS = 6;
 
 export default function HomePage() {
+  const showToast = useToast();
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<FlightSearchResponse | null>(null);
   const [error, setError] = useState('');
@@ -32,8 +43,14 @@ export default function HomePage() {
       setPhase('done');
     } catch (caught) {
       if (id !== latestRequest.current) return;
-      setError(messageFromError(caught));
+
+      const message = messageFromError(caught);
+      setError(message);
       setPhase('error');
+
+      // A rate limit or a spent allowance is a condition of the site, not a
+      // problem with this search, so it is also said out of band.
+      if (SITE_WIDE.has(errorStatus(caught) ?? 0)) showToast({ message });
     }
   }
 

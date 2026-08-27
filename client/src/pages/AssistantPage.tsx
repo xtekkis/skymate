@@ -3,7 +3,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUp, WarningCircle } from '@phosphor-icons/react';
 
 import type { Message } from '../models';
-import { messageFromError, sendChat } from '../services/api';
+import { useToast } from '../components/toastContext';
+import { errorStatus, messageFromError, sendChat } from '../services/api';
 import './AssistantPage.css';
 
 /** Matches the server's per-message cap, so the limit bites here first. */
@@ -11,6 +12,10 @@ const MAX_CHARS = 2000;
 
 /** The server caps history too; trimming here keeps the request inside it. */
 const MAX_HISTORY = 20;
+
+/** Statuses that describe the whole app rather than this one request. */
+const SITE_WIDE = new Set([429, 503]);
+
 
 const OPENERS = [
   'How early should I get to Heathrow for a long haul flight?',
@@ -23,6 +28,7 @@ function now() {
 }
 
 export default function AssistantPage() {
+  const showToast = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -53,7 +59,12 @@ export default function AssistantPage() {
       const reply = await sendChat(history);
       setMessages((current) => [...current, { role: 'assistant', content: reply, timestamp: now() }]);
     } catch (caught) {
-      setError(messageFromError(caught));
+      const message = messageFromError(caught);
+      setError(message);
+
+      // Same reasoning as the flights page: a site condition gets said twice,
+      // once in place and once out of band.
+      if (SITE_WIDE.has(errorStatus(caught) ?? 0)) showToast({ message });
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
