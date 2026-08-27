@@ -1,6 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CircleNotch, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
 
+import AirportInput from './AirportInput';
+
 import type { FlightDirection, SearchParams } from '../models';
 import './SearchForm.css';
 
@@ -41,11 +43,9 @@ function validate(values: { airport: string; date: string; time: string }): Erro
   const errors: Errors = {};
   const airport = values.airport.trim().toUpperCase();
 
-  if (!airport) {
-    errors.airport = 'Enter an airport code.';
-  } else if (!/^[A-Z]{3}$/.test(airport)) {
-    errors.airport = 'Use a 3-letter IATA code, for example LHR.';
-  }
+  // The picker only ever commits a code it chose, so the single failure left
+  // is not having chosen one.
+  if (!airport) errors.airport = 'Choose an airport from the list.';
 
   if (!values.date) errors.date = 'Choose a date.';
   if (!values.time) errors.time = 'Choose a start time.';
@@ -114,39 +114,16 @@ export default function SearchForm({ onSearch, isSearching = false }: SearchForm
   return (
     <form className="search" onSubmit={handleSubmit} noValidate>
       <div className="search__grid">
-        <div className="search__field search__field--airport">
-          <label className="search__label" htmlFor="search-airport">
-            Airport
-          </label>
-          <input
-            id="search-airport"
-            ref={refs.airport}
-            className={inputClass('airport', 'search__input--code tabular')}
-            value={airport}
-            onChange={(event) => {
-              const next = event.target.value.toUpperCase().slice(0, 3);
-              setAirport(next);
-              revalidate('airport', { airport: next });
-            }}
-            onBlur={() => handleBlur('airport')}
-            maxLength={3}
-            autoComplete="off"
-            spellCheck={false}
-            required
-            aria-invalid={Boolean(errors.airport)}
-            aria-describedby="search-airport-note"
-          />
-          {errors.airport ? (
-            <p className="search__error" id="search-airport-note" role="alert">
-              <WarningCircle size={14} weight="fill" aria-hidden="true" />
-              {errors.airport}
-            </p>
-          ) : (
-            <p className="search__hint" id="search-airport-note">
-              3-letter IATA code, for example LHR
-            </p>
-          )}
-        </div>
+        <AirportInput
+          value={airport}
+          onSelect={(iata) => {
+            setAirport(iata);
+            revalidate('airport', { airport: iata });
+          }}
+          error={errors.airport}
+          onBlur={() => handleBlur('airport')}
+          inputRef={airportRef}
+        />
 
         <fieldset className="search__field search__field--direction">
           <legend className="search__label">Showing</legend>

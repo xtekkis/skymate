@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-import type { Flight, FlightDirection, Message, SearchParams, TrackedFlight } from '../models';
+import type {
+  Airport,
+  Flight,
+  FlightDirection,
+  Message,
+  SearchParams,
+  TrackedFlight,
+} from '../models';
 
 /** Requests go to /api and are proxied to the Express server in dev (see vite.config.ts). */
 export const api = axios.create({
@@ -80,6 +87,18 @@ export async function getFlightByNumber(
   );
 
   return data;
+}
+
+export interface AirportSearchResponse {
+  query: string;
+  count: number;
+  airports: Airport[];
+}
+
+/** Runs against bundled data on our server, so it costs no upstream quota. */
+export async function searchAirports(query: string): Promise<Airport[]> {
+  const { data } = await api.get<AirportSearchResponse>('/airports', { params: { q: query } });
+  return data.airports;
 }
 
 /** Shape the Express error handlers return. */
