@@ -77,7 +77,10 @@ export default function AirportInput({
   }
 
   function handleChange(next: string) {
-    setQuery(next.slice(0, 40));
+    // No IATA code contains a digit, and typing one only ever produces a query
+    // that matches nothing. Dropped silently rather than flagged: a character
+    // that never appears needs no explanation.
+    setQuery(next.replace(/[0-9]/g, '').slice(0, 40));
     setOpen(true);
 
     // Typing after choosing undoes the choice, so a half-typed code can never
