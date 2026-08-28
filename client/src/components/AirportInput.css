@@ -1,19 +1,26 @@
 .airport {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-width: 0;
 }
 
+/* The list hangs off the input, not off the field: anchoring it to the whole
+   field dropped it below the hint and error line, leaving a gap. */
+.airport__control {
+  position: relative;
+}
+
 .airport__list {
   position: absolute;
-  top: calc(100% + var(--space-1));
+  top: calc(100% + 6px);
   left: 0;
   z-index: var(--z-overlay);
-  width: max(100%, 280px);
-  max-height: 280px;
+  width: max(100%, 300px);
+  max-height: 296px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   margin: 0;
   padding: var(--space-1);
   list-style: none;
@@ -25,9 +32,9 @@
 
 .airport__option {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 2.6rem 1fr;
   align-items: baseline;
-  gap: 2px var(--space-3);
+  gap: 1px var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   cursor: pointer;
@@ -43,15 +50,23 @@
   font-size: var(--text-sm);
 }
 
+/* One line each. A wrapped name makes some rows twice the height of others,
+   which is what made the list look ragged. */
 .airport__name {
   font-size: var(--text-sm);
   line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .airport__where {
   grid-column: 2;
   font-size: var(--text-xs);
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The friendly name for what was picked, where the format hint used to sit. */

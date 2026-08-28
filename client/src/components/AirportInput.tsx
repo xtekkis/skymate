@@ -119,60 +119,62 @@ export default function AirportInput({
         Airport
       </label>
 
-      <input
-        id={inputId}
-        ref={inputRef}
-        className={`search__input search__input--code tabular${error ? ' search__input--invalid' : ''}`}
-        role="combobox"
-        aria-expanded={showList}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={showList ? `${listId}-${active}` : undefined}
-        aria-invalid={Boolean(error)}
-        aria-describedby={noteId}
-        autoComplete="off"
-        spellCheck={false}
-        value={query}
-        onChange={(event) => handleChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
+      <div className="airport__control">
+        <input
+          id={inputId}
+          ref={inputRef}
+          className={`search__input search__input--code tabular${error ? ' search__input--invalid' : ''}`}
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={showList ? `${listId}-${active}` : undefined}
+          aria-invalid={Boolean(error)}
+          aria-describedby={noteId}
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          onChange={(event) => handleChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
           setOpen(false);
           onBlur?.();
-        }}
-      />
+          }}
+        />
 
-      {showList && (
-        <ul
-          className="airport__list"
-          id={listId}
-          role="listbox"
-          aria-label="Matching airports"
-          // Keeps focus in the input, so blur does not close the list before a
-          // click has landed on an option.
-          onMouseDown={(event) => event.preventDefault()}
-        >
-          {results.map((airport, index) => (
-            <li
-              key={airport.iata}
-              id={`${listId}-${index}`}
-              role="option"
-              aria-selected={index === active}
-              className={
-                index === active ? 'airport__option airport__option--active' : 'airport__option'
-              }
-              onMouseEnter={() => setActive(index)}
-              onClick={() => choose(airport)}
-            >
-              <span className="airport__code tabular">{airport.iata}</span>
-              <span className="airport__name">{airport.name}</span>
-              <span className="airport__where">
-                {[airport.municipality, airport.countryCode].filter(Boolean).join(', ')}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+        {showList && (
+          <ul
+            className="airport__list"
+            id={listId}
+            role="listbox"
+            aria-label="Matching airports"
+            // Keeps focus in the input, so blur does not close the list before a
+            // click has landed on an option.
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            {results.map((airport, index) => (
+              <li
+                key={airport.iata}
+                id={`${listId}-${index}`}
+                role="option"
+                aria-selected={index === active}
+                className={
+                  index === active ? 'airport__option airport__option--active' : 'airport__option'
+                }
+                onMouseEnter={() => setActive(index)}
+                onClick={() => choose(airport)}
+              >
+                <span className="airport__code tabular">{airport.iata}</span>
+                <span className="airport__name">{airport.name}</span>
+                <span className="airport__where">
+                  {[airport.municipality, airport.countryCode].filter(Boolean).join(', ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {error ? (
         <p className="search__error" id={noteId} role="alert">
