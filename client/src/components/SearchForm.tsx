@@ -8,6 +8,8 @@ import './SearchForm.css';
 
 interface SearchFormProps {
   onSearch: (params: SearchParams) => void;
+  /** Restores the fields from a shared link or a back navigation. */
+  initial?: SearchParams | null;
   /** Owned by the page, since the page owns the request. */
   isSearching?: boolean;
 }
@@ -53,12 +55,32 @@ function validate(values: { airport: string; date: string; time: string }): Erro
   return errors;
 }
 
-export default function SearchForm({ onSearch, isSearching = false }: SearchFormProps) {
-  const [airport, setAirport] = useState('');
-  const [direction, setDirection] = useState<FlightDirection>('departure');
-  const [date, setDate] = useState(todayLocal);
-  const [time, setTime] = useState('08:00');
-  const [windowHours, setWindowHours] = useState<number>(12);
+/** Turns a restored window back into the three fields that produced it. */
+function fieldsFrom(initial: SearchParams | null | undefined) {
+  if (!initial) return null;
+
+  const hours = Math.round(
+    (new Date(`${initial.toLocal}:00`).getTime() - new Date(`${initial.fromLocal}:00`).getTime()) /
+      3_600_000,
+  );
+
+  return {
+    airport: initial.airport,
+    direction: initial.direction,
+    date: initial.fromLocal.slice(0, 10),
+    time: initial.fromLocal.slice(11, 16),
+    windowHours: WINDOWS.includes(hours as (typeof WINDOWS)[number]) ? hours : 12,
+  };
+}
+
+export default function SearchForm({ onSearch, isSearching = false, initial }: SearchFormProps) {
+  const restored = fieldsFrom(initial);
+
+  const [airport, setAirport] = useState(restored?.airport ?? '');
+  const [direction, setDirection] = useState<FlightDirection>(restored?.direction ?? 'departure');
+  const [date, setDate] = useState(restored?.date ?? todayLocal);
+  const [time, setTime] = useState(restored?.time ?? '08:00');
+  const [windowHours, setWindowHours] = useState<number>(restored?.windowHours ?? 12);
   const [errors, setErrors] = useState<Errors>({});
 
   const airportRef = useRef<HTMLInputElement>(null);

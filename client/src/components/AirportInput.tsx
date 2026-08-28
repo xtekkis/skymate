@@ -36,10 +36,37 @@ export default function AirportInput({
   const [active, setActive] = useState(0);
 
   const requestRef = useRef(0);
+  const seededFor = useRef<string | null>(null);
 
-  // A choice cleared from outside, such as a form reset, has to clear here too.
+  /**
+   * A code can arrive from outside: a shared link, or going back to a search.
+   * Look it up once so the field shows the airport rather than a bare code.
+   */
   useEffect(() => {
-    if (!value) setChosen(null);
+    if (!value) {
+      setChosen(null);
+      setQuery('');
+      seededFor.current = null;
+      return;
+    }
+
+    if (seededFor.current === value) return;
+    seededFor.current = value;
+    setQuery(value);
+
+    let active = true;
+    searchAirports(value)
+      .then((airports) => {
+        const match = airports.find((airport) => airport.iata === value.toUpperCase());
+        if (active && match) setChosen(match);
+      })
+      .catch(() => {
+        // The code still works even if the name never arrives.
+      });
+
+    return () => {
+      active = false;
+    };
   }, [value]);
 
   useEffect(() => {
@@ -70,6 +97,8 @@ export default function AirportInput({
   }, [query]);
 
   function choose(airport: Airport) {
+    // Mark it seeded so the effect above does not look up what we just picked.
+    seededFor.current = airport.iata;
     setChosen(airport);
     setQuery(airport.iata);
     setOpen(false);

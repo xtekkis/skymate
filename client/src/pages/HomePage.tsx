@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
@@ -22,8 +23,30 @@ const SITE_WIDE = new Set([429, 503]);
 
 const SKELETON_ROWS = 6;
 
+/**
+ * The search lives in the query string rather than in component state.
+ *
+ * That is what makes going back from a flight restore the results instead of
+ * an empty form, and it survives a refresh and makes a search shareable, which
+ * memory alone cannot do.
+ */
+function readSearch(params: URLSearchParams): SearchParams | null {
+  const airport = (params.get('airport') ?? '').toUpperCase();
+  const from = params.get('from') ?? '';
+  const to = params.get('to') ?? '';
+  const direction = params.get('direction') === 'arrival' ? 'arrival' : 'departure';
+
+  // A half written URL should show the empty form, not an error.
+  if (!/^[A-Z]{3}$/.test(airport)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(from)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(to)) return null;
+
+  return { airport, direction, fromLocal: from, toLocal: to };
+}
+
 export default function HomePage() {
   const showToast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<FlightSearchResponse | null>(null);
   const [error, setError] = useState('');
@@ -31,27 +54,56 @@ export default function HomePage() {
   /** Guards against a slow first search landing after a faster second one. */
   const latestRequest = useRef(0);
 
-  async function handleSearch(params: SearchParams) {
-    const id = ++latestRequest.current;
-    setPhase('loading');
-    setError('');
+  // Reparsed rather than stored, so back, forward and a pasted link all take
+  // the same path into the search.
+  const search = useMemo(() => readSearch(searchParams), [searchParams]);
+  const searchKey = search ? `${search.airport}|${search.direction}|${search.fromLocal}|${search.toLocal}` : '';
 
-    try {
-      const data = await searchFlights(params);
-      if (id !== latestRequest.current) return;
-      setResult(data);
-      setPhase('done');
-    } catch (caught) {
-      if (id !== latestRequest.current) return;
+  const run = useCallback(
+    async (params: SearchParams) => {
+      const id = ++latestRequest.current;
+      setPhase('loading');
+      setError('');
 
-      const message = messageFromError(caught);
-      setError(message);
-      setPhase('error');
+      try {
+        const data = await searchFlights(params);
+        if (id !== latestRequest.current) return;
+        setResult(data);
+        setPhase('done');
+      } catch (caught) {
+        if (id !== latestRequest.current) return;
 
-      // A rate limit or a spent allowance is a condition of the site, not a
-      // problem with this search, so it is also said out of band.
-      if (SITE_WIDE.has(errorStatus(caught) ?? 0)) showToast({ message });
+        const message = messageFromError(caught);
+        setError(message);
+        setPhase('error');
+
+        // A rate limit or a spent allowance is a condition of the site, not a
+        // problem with this search, so it is also said out of band.
+        if (SITE_WIDE.has(errorStatus(caught) ?? 0)) showToast({ message });
+      }
+    },
+    [showToast],
+  );
+
+  useEffect(() => {
+    if (!search) {
+      setPhase('idle');
+      setResult(null);
+      return;
     }
+    void run(search);
+    // Keyed on the string, not the object: readSearch returns a new object on
+    // every render, and depending on it would re-run the search forever.
+  }, [searchKey]);
+
+  /** Submitting writes the URL. The effect above notices and does the work. */
+  function handleSearch(params: SearchParams) {
+    setSearchParams({
+      airport: params.airport,
+      direction: params.direction,
+      from: params.fromLocal,
+      to: params.toLocal,
+    });
   }
 
   return (
@@ -66,7 +118,7 @@ export default function HomePage() {
         Live departures and arrivals for any airport, with status, terminal and aircraft.
       </p>
 
-      <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} />
+      <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
 
       <div className="results" aria-live="polite" aria-busy={phase === 'loading'}>
         {phase === 'loading' && (
