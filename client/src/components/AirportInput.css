@@ -30,6 +30,14 @@
   box-shadow: var(--shadow-md);
 }
 
+/* On a phone the input is narrower than the 300px floor above, so the list
+   hung past its right edge. Matching the input reads as one control. */
+@media (max-width: 640px) {
+  .airport__list {
+    width: 100%;
+  }
+}
+
 .airport__option {
   display: grid;
   grid-template-columns: 2.6rem 1fr;

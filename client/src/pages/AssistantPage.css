@@ -181,7 +181,9 @@
 
 .assistant__input {
   flex: 1;
-  min-height: 40px;
+  /* 44px, like every other control here, so the composer is a comfortable
+     target on a touchscreen rather than the one place that is not. */
+  min-height: 44px;
   max-height: 160px;
   padding: var(--space-2);
   /* Its own background, not a transparent hole: the home input has always
@@ -205,8 +207,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: var(--accent);
   border-radius: var(--radius-control);
   color: var(--accent-text);

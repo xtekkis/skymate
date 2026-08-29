@@ -6,6 +6,13 @@
   padding: var(--space-5);
 }
 
+/* 24px of padding either side is a sixth of a phone screen. */
+@media (max-width: 640px) {
+  .search {
+    padding: var(--space-4);
+  }
+}
+
 .search__grid {
   display: grid;
   gap: var(--space-4);
