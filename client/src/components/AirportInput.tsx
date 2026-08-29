@@ -37,6 +37,8 @@ export default function AirportInput({
 
   const requestRef = useRef(0);
   const seededFor = useRef<string | null>(null);
+  const seededQuery = useRef<string | null>(null);
+  const clearedByTyping = useRef(false);
 
   /**
    * A code can arrive from outside: a shared link, or going back to a search.
@@ -45,20 +47,38 @@ export default function AirportInput({
   useEffect(() => {
     if (!value) {
       setChosen(null);
-      setQuery('');
       seededFor.current = null;
+      seededQuery.current = null;
+
+      // Typing is what undid the choice, and the half-typed text belongs to the
+      // person typing it. Only a reset from outside should empty the field.
+      if (clearedByTyping.current) {
+        clearedByTyping.current = false;
+        return;
+      }
+
+      setQuery('');
       return;
     }
 
     if (seededFor.current === value) return;
     seededFor.current = value;
+    // The query effect below would otherwise repeat this same lookup.
+    seededQuery.current = value;
     setQuery(value);
 
     let active = true;
     searchAirports(value)
       .then((airports) => {
+        if (!active) return;
+
         const match = airports.find((airport) => airport.iata === value.toUpperCase());
-        if (active && match) setChosen(match);
+        if (match) setChosen(match);
+
+        // Keep the answer rather than throwing it away, so opening the list
+        // after arriving on a link shows matches without asking again.
+        setResults(airports);
+        setActive(0);
       })
       .catch(() => {
         // The code still works even if the name never arrives.
@@ -74,6 +94,13 @@ export default function AirportInput({
 
     if (term.length < MIN_QUERY) {
       setResults([]);
+      return;
+    }
+
+    // A code that arrived from outside was just looked up above. Searching it
+    // again would be the same request twice for every shared link.
+    if (seededQuery.current === term) {
+      seededQuery.current = null;
       return;
     }
 
@@ -115,6 +142,7 @@ export default function AirportInput({
     // Typing after choosing undoes the choice, so a half-typed code can never
     // be submitted as though it had been picked from the list.
     if (chosen) {
+      clearedByTyping.current = true;
       setChosen(null);
       onSelect('');
     }
