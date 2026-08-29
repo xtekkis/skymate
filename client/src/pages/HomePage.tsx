@@ -96,6 +96,23 @@ export default function HomePage() {
     // every render, and depending on it would re-run the search forever.
   }, [searchKey]);
 
+  /**
+   * One sentence describing where the search has got to, for a screen reader.
+   *
+   * The results block used to be the live region itself, which meant finishing
+   * a search read out the entire table, row by row. A reader wants to know the
+   * search landed and how many flights there are; the table is then theirs to
+   * navigate.
+   */
+  const status =
+    phase === 'loading'
+      ? 'Searching flights'
+      : phase === 'done' && result
+        ? result.count === 0
+          ? 'No flights in that window'
+          : `${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'} at ${result.airport}`
+        : '';
+
   /** Submitting writes the URL. The effect above notices and does the work. */
   function handleSearch(params: SearchParams) {
     setSearchParams({
@@ -120,21 +137,24 @@ export default function HomePage() {
 
       <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
 
-      <div className="results" aria-live="polite" aria-busy={phase === 'loading'}>
+      <div className="results" aria-busy={phase === 'loading'}>
+        {/* Always mounted. A live region that appears at the same moment as its
+            text is often missed, because there was nothing there to change. */}
+        <p className="visually-hidden" role="status">
+          {status}
+        </p>
+
         {phase === 'loading' && (
-          <>
-            <p className="visually-hidden">Searching flights</p>
-            <div className="skeleton" aria-hidden="true">
-              {Array.from({ length: SKELETON_ROWS }, (_, row) => (
-                <div className="skeleton__row" key={row}>
-                  <span className="skeleton__bar skeleton__bar--time" />
-                  <span className="skeleton__bar skeleton__bar--number" />
-                  <span className="skeleton__bar skeleton__bar--airline" />
-                  <span className="skeleton__bar skeleton__bar--status" />
-                </div>
-              ))}
-            </div>
-          </>
+          <div className="skeleton" aria-hidden="true">
+            {Array.from({ length: SKELETON_ROWS }, (_, row) => (
+              <div className="skeleton__row" key={row}>
+                <span className="skeleton__bar skeleton__bar--time" />
+                <span className="skeleton__bar skeleton__bar--number" />
+                <span className="skeleton__bar skeleton__bar--airline" />
+                <span className="skeleton__bar skeleton__bar--status" />
+              </div>
+            ))}
+          </div>
         )}
 
         {phase === 'error' && (
