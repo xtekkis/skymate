@@ -32,7 +32,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding-right: var(--space-2);
+  /*
+   * Padding on every side, not only the right. Setting overflow on one axis
+   * makes the box clip on both, and a focus ring is drawn outside the control
+   * it belongs to, so a control sitting flush against this edge had its ring
+   * sliced off. The negative margin puts the content back where it was.
+   */
+  padding: var(--space-1) var(--space-2);
+  margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
 }
 
 .bubble {

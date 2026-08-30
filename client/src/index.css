@@ -235,10 +235,15 @@ a {
 
 /* Focus */
 
+/*
+ * The ring follows whatever radius the control already has. Setting one here
+ * used to restyle the control itself on focus, so a 14px chip snapped to 8px
+ * the moment it was reached, which read as the shape breaking rather than as
+ * the control being focused.
+ */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius-control);
 }
 
 ::selection {
