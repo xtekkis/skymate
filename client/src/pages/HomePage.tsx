@@ -125,6 +125,8 @@ export default function HomePage() {
 
   return (
     <motion.main
+      id="main"
+      tabIndex={-1}
       className="page"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}

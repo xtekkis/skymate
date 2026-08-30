@@ -143,7 +143,7 @@ export default function FlightPage() {
   }
 
   return (
-    <main className="page flight">
+    <main id="main" tabIndex={-1} className="page flight">
       <button type="button" className="flight__back" onClick={goBack}>
         <ArrowLeft size={16} weight="bold" aria-hidden="true" />
         Back

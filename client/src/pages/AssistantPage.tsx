@@ -94,7 +94,7 @@ export default function AssistantPage() {
   }
 
   return (
-    <main className="assistant">
+    <main id="main" tabIndex={-1} className="assistant">
       <div className="assistant__inner">
         <div className="assistant__intro">
           <h1>Travel assistant</h1>

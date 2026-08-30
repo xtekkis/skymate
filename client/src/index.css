@@ -246,6 +246,38 @@ a {
   color: var(--text);
 }
 
+/*
+ * Skip link. Off screen until it has focus, rather than hidden, because a
+ * hidden element cannot be tabbed to and this exists only for the keyboard.
+ * Without it every page begins with the brand, two nav links and the theme
+ * toggle before any content.
+ */
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: calc(var(--z-header) + 1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  translate: 0 -300%;
+}
+
+.skip-link:focus {
+  translate: 0 0;
+}
+
+/* Focused as a navigation target, never by tabbing, so it needs no ring. */
+main[tabindex='-1']:focus {
+  outline: none;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

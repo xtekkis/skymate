@@ -14,7 +14,7 @@ interface MessageScreenProps {
  */
 export default function MessageScreen({ title, body, action }: MessageScreenProps) {
   return (
-    <main className="page message">
+    <main id="main" tabIndex={-1} className="page message">
       <h1 className="message__title">{title}</h1>
       <p className="message__body">{body}</p>
       <div className="message__action">{action}</div>
