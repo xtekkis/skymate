@@ -12,7 +12,13 @@ export default function Header() {
   return (
     <header className="header">
       <div className="header__inner">
-        <NavLink to="/" className="header__brand">
+        {/*
+          * Out of the tab order on purpose. It goes where the Flights link
+          * beside it goes, so tabbing through it reaches the same page twice
+          * before anything new. Still a link for the mouse, and still reachable
+          * in a screen reader's own browse mode.
+          */}
+        <NavLink to="/" className="header__brand" tabIndex={-1}>
           Skymate
         </NavLink>
 

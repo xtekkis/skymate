@@ -16,25 +16,31 @@ beforeEach(() => {
   window.history.pushState({}, '', '/');
 });
 
-describe('getting to the content with a keyboard', () => {
-  it('offers a skip link before anything else', async () => {
+describe('the tab order', () => {
+  it('starts on the first link that goes somewhere new', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.tab();
 
-    const skip = screen.getByRole('link', { name: 'Skip to content' });
-    // Ahead of the brand, both nav links and the theme toggle.
-    expect(document.activeElement).toBe(skip);
-    expect(skip.getAttribute('href')).toBe('#main');
+    // The wordmark is skipped: it leads where Flights leads.
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Flights' }));
   });
 
-  it('points the skip link at a target that exists', () => {
+  it('keeps the wordmark clickable, just not a stop', () => {
+    render(<App />);
+
+    const brand = screen.getByRole('link', { name: 'Skymate' });
+    expect(brand.getAttribute('href')).toBe('/');
+    expect(brand.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('has a main that navigation can move focus to', () => {
     render(<App />);
 
     const main = screen.getByRole('main');
     expect(main.id).toBe('main');
-    // Landmarks are not tabbable by default, so it needs this to be focusable.
+    // Landmarks are not focusable by default, so it needs this.
     expect(main.getAttribute('tabindex')).toBe('-1');
   });
 });

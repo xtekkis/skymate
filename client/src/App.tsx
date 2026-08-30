@@ -38,11 +38,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        {/* First thing Tab reaches, so the header is skippable on every page. */}
-        <a className="skip-link" href="#main">
-          Skip to content
-        </a>
-
         <Header />
         <FocusMainOnNavigation />
         {/* Inside the header, so a failed page still leaves a way to navigate. */}
