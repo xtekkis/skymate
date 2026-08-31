@@ -61,8 +61,8 @@
   --space-8: 4rem;
 
   /* Type */
-  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
