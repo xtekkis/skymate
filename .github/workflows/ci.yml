@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run pointless, so stop
+# paying for it rather than letting two runs race to report on old code.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read only. Nothing here writes to the repository or needs a token.
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: server
+
+      # There is no .env here and no secret is configured for this workflow, so
+      # the suite has to pass without credentials. That is the same requirement
+      # as never reaching AeroDataBox or Anthropic, enforced by the environment
+      # rather than by everyone remembering.
+      - name: Test
+        run: npm test
+        working-directory: server
+
+      # Production dependencies only, and only at high or above. A build tool
+      # advisory is not something a visitor can reach, and failing the build on
+      # one teaches people to ignore the job.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: server
+
+  client:
+    name: client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: client
+
+      - name: Lint
+        run: npm run lint
+        working-directory: client
+
+      - name: Test
+        run: npm test
+        working-directory: client
+
+      # Where tsc runs, so a type error is reported as a type error rather than
+      # as whichever test happened to import the broken file.
+      - name: Build
+        run: npm run build
+        working-directory: client
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: client
