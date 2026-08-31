@@ -141,7 +141,12 @@ describe('the search in the URL', () => {
 
     show(SEARCH);
 
-    await waitFor(() => expect(flights).toHaveBeenCalledTimes(1));
+    // Waited on the table rather than on the call count: the count is 1 the
+    // moment the search starts, so asserting it there would pass even if the
+    // effect went on to fire again for every render after it.
+    await screen.findByRole('table');
+
+    expect(flights).toHaveBeenCalledTimes(1);
     expect(flights).toHaveBeenCalledWith({
       airport: 'LHR',
       direction: 'departure',

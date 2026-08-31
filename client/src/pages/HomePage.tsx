@@ -54,10 +54,16 @@ export default function HomePage() {
   /** Guards against a slow first search landing after a faster second one. */
   const latestRequest = useRef(0);
 
-  // Reparsed rather than stored, so back, forward and a pasted link all take
-  // the same path into the search.
+  /*
+   * Reparsed rather than stored, so back, forward and a pasted link all take
+   * the same path into the search.
+   *
+   * Stable for as long as the location is: useSearchParams memoises on
+   * location.search, so this memo only recomputes when the URL actually
+   * changes. That is what lets the effect below depend on it honestly instead
+   * of on a string built to stand in for it.
+   */
   const search = useMemo(() => readSearch(searchParams), [searchParams]);
-  const searchKey = search ? `${search.airport}|${search.direction}|${search.fromLocal}|${search.toLocal}` : '';
 
   const run = useCallback(
     async (params: SearchParams) => {
@@ -92,9 +98,7 @@ export default function HomePage() {
       return;
     }
     void run(search);
-    // Keyed on the string, not the object: readSearch returns a new object on
-    // every render, and depending on it would re-run the search forever.
-  }, [searchKey]);
+  }, [search, run]);
 
   /**
    * One sentence describing where the search has got to, for a screen reader.
