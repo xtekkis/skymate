@@ -118,6 +118,8 @@ export default function FlightPage() {
   useEffect(() => {
     let active = true;
     setPhase('loading');
+    // A previous failure has nothing to say about the flight being loaded now.
+    setError(null);
 
     getFlightByNumber(number, date)
       .then((response) => {
@@ -136,6 +138,22 @@ export default function FlightPage() {
     };
   }, [number, date]);
 
+  const label = number.toUpperCase();
+
+  /**
+   * One sentence for a screen reader, matching what the search page does. The
+   * skeleton and the cards are shapes on a screen; without this, loading a
+   * flight and finding one are the same silence.
+   */
+  const status =
+    phase === 'loading'
+      ? `Loading flight ${label}`
+      : phase === 'ready'
+        ? flights.length === 0
+          ? `No flight found for ${label}`
+          : `${flights.length} ${flights.length === 1 ? 'flight' : 'flights'} found for ${label}`
+        : '';
+
   /** React Router marks the first entry "default", so that means no in-app history. */
   function goBack() {
     if (location.key === 'default') navigate('/');
@@ -148,6 +166,12 @@ export default function FlightPage() {
         <ArrowLeft size={16} weight="bold" aria-hidden="true" />
         Back
       </button>
+
+      {/* Always mounted: a live region that arrives with its own text is
+          often missed, there having been nothing there to change. */}
+      <p className="visually-hidden" role="status">
+        {status}
+      </p>
 
       {phase === 'loading' && (
         <div className="flight__card flight__skeleton" aria-busy="true" aria-label="Loading flight">
@@ -167,7 +191,7 @@ export default function FlightPage() {
       {phase === 'ready' && flights.length === 0 && (
         <div className="flight__notice">
           <p>
-            No flight found for <span className="tabular">{number.toUpperCase()}</span>
+            No flight found for <span className="tabular">{label}</span>
             {date ? ` on ${date}` : ''}.
           </p>
           <p className="flight__noticeHint">
