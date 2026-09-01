@@ -33,7 +33,11 @@ function readQuery(query) {
   if (!LOCAL_DATETIME.test(to)) errors.push('to must look like YYYY-MM-DDTHH:mm');
 
   if (LOCAL_DATETIME.test(from) && LOCAL_DATETIME.test(to)) {
-    const hours = (new Date(`${to}:00`) - new Date(`${from}:00`)) / 3_600_000;
+    // Both sides parsed as UTC. These are times at the airport, in a zone
+    // this process knows nothing about, so folding the server's own daylight
+    // saving jumps into what should be plain subtraction can measure a
+    // 13-hour window as 12 and wave it through to be rejected upstream.
+    const hours = (new Date(`${to}:00Z`) - new Date(`${from}:00Z`)) / 3_600_000;
     if (hours <= 0) errors.push('to must be after from');
     else if (hours > MAX_WINDOW_HOURS) errors.push(`window must be ${MAX_WINDOW_HOURS} hours or less`);
   }

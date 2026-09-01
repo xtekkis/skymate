@@ -82,6 +82,25 @@ describe('GET /api/flights', () => {
     assert.match(JSON.stringify(await response.json()), /12 hours or less/);
   });
 
+  it('measures the window in airport time, not in the zone the server runs in', async () => {
+    // 29 March 2026 is the morning Athens moves its clocks forward. Measured in
+    // that zone, 01:00 to 14:00 is twelve hours rather than thirteen, so the
+    // guard waved it through and AeroDataBox spent a request rejecting it.
+    const zone = process.env.TZ;
+    process.env.TZ = 'Europe/Athens';
+
+    try {
+      const response = await get(
+        '/api/flights?airport=LHR&from=2026-03-29T01:00&to=2026-03-29T14:00',
+      );
+
+      assert.equal(response.status, 400);
+      assert.match(JSON.stringify(await response.json()), /12 hours or less/);
+    } finally {
+      process.env.TZ = zone;
+    }
+  });
+
   it('rejects a backwards window', async () => {
     const response = await get('/api/flights?airport=LHR&from=2026-09-01T10:00&to=2026-09-01T08:00');
     assert.equal(response.status, 400);

@@ -34,11 +34,17 @@ function todayLocal() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-/** Adds hours to a local date and time, rolling the date over when needed. */
+/**
+ * Adds hours to a wall-clock date and time, rolling the date over when needed.
+ *
+ * Done in UTC on purpose. These are times at the airport, in a zone this
+ * browser knows nothing about, so bringing the browser's own zone into it only
+ * adds daylight saving to arithmetic that should be plain addition.
+ */
 function addHours(date: string, time: string, hours: number) {
-  const end = new Date(`${date}T${time}:00`);
-  end.setHours(end.getHours() + hours);
-  return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+  const end = new Date(`${date}T${time}:00Z`);
+  end.setUTCHours(end.getUTCHours() + hours);
+  return `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}T${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
 }
 
 function validate(values: { airport: string; date: string; time: string }): Errors {
@@ -59,8 +65,13 @@ function validate(values: { airport: string; date: string; time: string }): Erro
 function fieldsFrom(initial: SearchParams | null | undefined) {
   if (!initial) return null;
 
+  // UTC on both sides, for the same reason addHours uses it. Measured in the
+  // browser's zone, a four hour window shared across a daylight saving change
+  // comes back as three, misses the list of windows, and silently becomes
+  // twelve.
   const hours = Math.round(
-    (new Date(`${initial.toLocal}:00`).getTime() - new Date(`${initial.fromLocal}:00`).getTime()) /
+    (new Date(`${initial.toLocal}:00Z`).getTime() -
+      new Date(`${initial.fromLocal}:00Z`).getTime()) /
       3_600_000,
   );
 
