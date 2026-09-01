@@ -74,8 +74,9 @@ export default function FlightList({ flights, direction }: FlightListProps) {
     <div className="board">
       <table className="board__table">
         <caption className="visually-hidden">
-          {direction === 'departure' ? 'Departures' : 'Arrivals'}, {flights.length} flights, ordered
-          by scheduled time
+          {direction === 'departure' ? 'Departures' : 'Arrivals'},{' '}
+          {flights.length === 1 ? '1 flight' : `${flights.length} flights`}, ordered by scheduled
+          time
         </caption>
         <thead>
           <tr>
