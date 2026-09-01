@@ -153,6 +153,25 @@ describe('the app around the routes', () => {
     assert.equal(response.headers.get('cross-origin-resource-policy'), 'cross-origin');
   });
 
+  it('declares a content policy for an API, not for a web page', async () => {
+    const policy = (await get('/api/health')).headers.get('content-security-policy') ?? '';
+
+    assert.match(policy, /default-src 'none'/);
+    assert.match(policy, /frame-ancestors 'none'/);
+
+    // Helmet's default policy allows all three. This server can serve none of
+    // them, and a policy that permits what it cannot do is just noise.
+    assert.equal(/script-src/.test(policy), false, policy);
+    assert.equal(/style-src/.test(policy), false, policy);
+    assert.equal(/unsafe-inline/.test(policy), false, policy);
+  });
+
+  it('refuses to be framed by anyone, including us', async () => {
+    const response = await get('/api/health');
+
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  });
+
   it('advertises a rate limit policy per endpoint', async () => {
     const health = await get('/api/health');
     const flights = await get('/api/flights?airport=XX');

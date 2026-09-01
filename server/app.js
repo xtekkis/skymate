@@ -28,6 +28,31 @@ export function createApp() {
 
   app.use(
     helmet({
+      /*
+       * Helmet's default policy describes a web page: it permits scripts,
+       * inline styles and fonts from anywhere over https. This process answers
+       * JSON and nothing else, so it needs none of that, and shipping a policy
+       * that allows what it cannot serve tells a reader the wrong thing about
+       * what this is.
+       *
+       * Everything falls back to default-src, so 'none' covers the lot. The
+       * three that do not fall back are named individually.
+       */
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          'default-src': ["'none'"],
+          // Nothing here belongs in a frame, on any origin.
+          'frame-ancestors': ["'none'"],
+          'base-uri': ["'none'"],
+          'form-action': ["'none'"],
+        },
+      },
+
+      // frame-ancestors covers this for anything current. DENY rather than
+      // SAMEORIGIN is what the older header should have said all along.
+      frameguard: { action: 'deny' },
+
       // This process answers JSON, never HTML, so the browser is meant to read
       // it from the frontend's origin. same-origin (the default) is the wrong
       // claim for an API, and the dev proxy would hide the mistake until
