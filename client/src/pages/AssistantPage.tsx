@@ -43,12 +43,18 @@ export default function AssistantPage() {
     logEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
   }, [messages, isSending, reduceMotion]);
 
-  async function ask(question: string) {
+  /**
+   * Takes the conversation to build on rather than always reading state,
+   * because a caller that has just trimmed the log cannot wait for the trim to
+   * land. State updates are not visible until the next render, and this
+   * function closes over the current one.
+   */
+  async function ask(question: string, conversation: Message[] = messages) {
     const trimmed = question.trim();
     if (!trimmed || isSending) return;
 
     const outgoing: Message = { role: 'user', content: trimmed, timestamp: now() };
-    const history = [...messages, outgoing].slice(-MAX_HISTORY);
+    const history = [...conversation, outgoing].slice(-MAX_HISTORY);
 
     setMessages(history);
     setDraft('');
@@ -89,8 +95,11 @@ export default function AssistantPage() {
     const lastQuestion = [...messages].reverse().find((message) => message.role === 'user');
     if (!lastQuestion) return;
 
-    setMessages((current) => current.slice(0, current.lastIndexOf(lastQuestion)));
-    void ask(lastQuestion.content);
+    // Everything before the question that failed, handed over directly. Setting
+    // it here and letting ask read it back would ask the same question twice:
+    // the trim is queued, and ask sees the log as it was.
+    const before = messages.slice(0, messages.lastIndexOf(lastQuestion));
+    void ask(lastQuestion.content, before);
   }
 
   return (
