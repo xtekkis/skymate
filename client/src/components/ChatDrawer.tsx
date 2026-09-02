@@ -27,6 +27,9 @@ const MORPH_ID = 'chat-surface';
 /** Quick enough to feel like a response, soft enough not to snap. */
 const MORPH = { type: 'spring', stiffness: 380, damping: 34 } as const;
 
+/** Long enough to read as the colour arriving, short enough to keep up. */
+const WASH = { duration: 0.24, ease: [0.16, 1, 0.3, 1] } as const;
+
 /** Corner radius as numbers, so the morph interpolates them without distorting. */
 const FAB_RADIUS = 28;
 const PANEL_RADIUS = 14;
@@ -179,6 +182,22 @@ export default function ChatDrawer() {
         onClick={() => setOpen(true)}
         aria-label="Travel assistant"
       >
+        {/*
+          The accent arrives as opacity over the panel's own background rather
+          than as a background swap. A layout morph moves the box but not the
+          colour, so closing used to land a full size orange rectangle on
+          screen for a frame before it shrank. Opacity is also the only way to
+          animate this at all: the palette is oklch, which does not
+          interpolate.
+        */}
+        <motion.span
+          className="chat__wash"
+          aria-hidden="true"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={WASH}
+        />
+
         <motion.span
           className="chat__toggleIcon"
           initial={reduceMotion ? false : { opacity: 0 }}

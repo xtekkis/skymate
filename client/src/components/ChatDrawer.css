@@ -16,7 +16,10 @@
   justify-content: center;
   width: var(--fab-size);
   height: var(--fab-size);
-  background: var(--accent);
+  /* The panel's colour underneath, with the accent laid over it. See the wash
+     in the component: this is what lets the two states cross-fade. */
+  background: var(--bg);
+  overflow: hidden;
   box-shadow: var(--shadow-md);
   color: var(--accent-text);
   transition:
@@ -24,7 +27,14 @@
     translate var(--duration-fast) var(--ease-out);
 }
 
-.chat__toggle:hover {
+.chat__wash {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+.chat__toggle:hover .chat__wash {
   background: var(--accent-hover);
 }
 
@@ -61,6 +71,7 @@
 }
 
 .chat__toggleIcon {
+  position: relative;
   display: inline-flex;
 }
 
