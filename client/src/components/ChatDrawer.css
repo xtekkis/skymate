@@ -17,7 +17,6 @@
   width: var(--fab-size);
   height: var(--fab-size);
   background: var(--accent);
-  border-radius: var(--radius-pill);
   box-shadow: var(--shadow-md);
   color: var(--accent-text);
   transition:
@@ -36,18 +35,33 @@
 .chat {
   position: fixed;
   right: var(--space-4);
-  /* Clears the button rather than covering it, so the way out stays visible. */
-  bottom: calc(var(--space-4) + var(--fab-size) + var(--space-3));
+  /* The button's own corner. The panel takes its place rather than sitting
+     above it, which is what makes the two read as one surface opening. */
+  bottom: var(--space-4);
   z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
   width: min(420px, calc(100vw - var(--space-4) * 2));
-  max-height: min(560px, calc(100vh - var(--fab-size) - var(--space-8)));
+  max-height: min(560px, calc(100vh - var(--space-7)));
   padding: var(--space-4);
   background: var(--bg);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-md);
+  /* border-radius is set inline: the morph interpolates it as a number, and a
+     CSS value here would fight the animation. */
+  overflow: hidden;
+}
+
+/* Everything inside, so the shape can morph without stretching the contents. */
+.chat__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.chat__toggleIcon {
+  display: inline-flex;
 }
 
 /* Head */
@@ -310,12 +324,12 @@
 
 /* Phones: the drawer is the screen, so it stops pretending to be a card. */
 @media (max-width: 640px) {
+  /* Nearly the whole screen. On a phone a floating card is a cramped card,
+     and there is nothing behind it worth keeping in view. */
   .chat {
-    right: var(--space-3);
-    left: var(--space-3);
-    bottom: calc(var(--space-3) + var(--fab-size) + var(--space-2));
+    inset: var(--space-3);
     width: auto;
-    max-height: calc(100vh - var(--fab-size) - var(--space-7));
+    max-height: none;
   }
 
   .chat__toggle {

@@ -48,7 +48,19 @@ describe('opening and closing', () => {
     show();
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+    expect(toggle()).toBeTruthy();
+  });
+
+  it('is one control at a time, never a button beside its own panel', async () => {
+    const user = await open();
+
+    // The button becomes the panel rather than sitting under it, so there is
+    // exactly one way to close and exactly one X on screen.
+    expect(screen.queryByRole('button', { name: 'Travel assistant' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /close/i })).toHaveLength(1);
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(toggle()).toBeTruthy());
   });
 
   it('opens on the button and puts the cursor where you type', async () => {

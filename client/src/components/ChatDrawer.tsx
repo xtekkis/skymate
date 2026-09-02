@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUp, ChatCircleDots, WarningCircle, X } from '@phosphor-icons/react';
@@ -16,6 +16,20 @@ const MAX_HISTORY = 20;
 
 /** Statuses that describe the whole app rather than this one request. */
 const SITE_WIDE = new Set([429, 503]);
+
+/**
+ * Ties the button and the panel together as one surface, so the panel grows
+ * out of the button rather than appearing beside it. Both are anchored to the
+ * same corner, which is what makes the morph read as one object opening.
+ */
+const MORPH_ID = 'chat-surface';
+
+/** Quick enough to feel like a response, soft enough not to snap. */
+const MORPH = { type: 'spring', stiffness: 380, damping: 34 } as const;
+
+/** Corner radius as numbers, so the morph interpolates them without distorting. */
+const FAB_RADIUS = 28;
+const PANEL_RADIUS = 14;
 
 const OPENERS = [
   'How early should I get to the airport for a long haul flight?',
@@ -45,7 +59,6 @@ export default function ChatDrawer() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const panelId = useId();
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -66,7 +79,7 @@ export default function ChatDrawer() {
     logEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
   }, [messages, isSending, open, reduceMotion]);
 
-  /** Focus follows the drawer, and comes back to the button that opened it. */
+  /** Focus follows the panel, and comes back to the button it grew out of. */
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
@@ -149,155 +162,162 @@ export default function ChatDrawer() {
     void ask(lastQuestion.content, before);
   }
 
-  return (
-    <>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="chat"
-            id={panelId}
-            role="dialog"
-            aria-label="Travel assistant"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <header className="chat__head">
-              <div>
-                <h2 className="chat__title">Travel assistant</h2>
-                <p className="chat__context">
-                  {airport
-                    ? `Knows you are looking at ${airport}.`
-                    : 'Airports, baggage, what to expect.'}
-                </p>
-              </div>
+  // No shared id under reduced motion: the two states simply swap, with no
+  // travel between them for anyone who asked not to see any.
+  const morphId = reduceMotion ? undefined : MORPH_ID;
+  const morph = reduceMotion ? { duration: 0 } : MORPH;
 
-              <button
-                type="button"
-                className="chat__close"
-                onClick={() => setOpen(false)}
-                aria-label="Close travel assistant"
-              >
-                <X size={16} weight="bold" aria-hidden="true" />
-              </button>
-            </header>
-
-            <div
-              className="chat__log"
-              role="log"
-              aria-live="polite"
-              aria-busy={isSending}
-              aria-label="Conversation"
-            >
-              {messages.length === 0 && (
-                <div className="chat__empty">
-                  <p className="chat__emptyText">Nothing asked yet. Try one of these:</p>
-                  <ul className="chat__openers">
-                    {OPENERS.map((opener) => (
-                      <li key={opener}>
-                        <button
-                          type="button"
-                          className="chat__opener"
-                          onClick={() => void ask(opener)}
-                        >
-                          {opener}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={`${message.timestamp}-${message.role}`}
-                    className={`bubble bubble--${message.role}`}
-                    initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    {/* Rendered as text, never as markup: this is model output. */}
-                    {message.content}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {isSending && (
-                <div className="bubble bubble--assistant chat__thinking" aria-label="Thinking">
-                  <span className="chat__dot" />
-                  <span className="chat__dot" />
-                  <span className="chat__dot" />
-                </div>
-              )}
-
-              {error && (
-                <div className="chat__error" role="alert">
-                  <WarningCircle size={16} weight="fill" aria-hidden="true" />
-                  <span>{error}</span>
-                  <button type="button" className="chat__retry" onClick={retry}>
-                    Try again
-                  </button>
-                </div>
-              )}
-
-              <div ref={logEndRef} />
-            </div>
-
-            <form className="chat__composer" onSubmit={handleSubmit}>
-              <label className="visually-hidden" htmlFor="chat-input">
-                Your message
-              </label>
-              <textarea
-                id="chat-input"
-                ref={inputRef}
-                className="chat__input"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value.slice(0, MAX_CHARS))}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about your trip"
-                rows={1}
-                maxLength={MAX_CHARS}
-                disabled={isSending}
-              />
-              <button
-                type="submit"
-                className="chat__send"
-                disabled={isSending || draft.trim().length === 0}
-                aria-label="Send message"
-              >
-                <ArrowUp size={18} weight="bold" aria-hidden="true" />
-              </button>
-            </form>
-
-            <p className="chat__note">
-              No live flight data here. The flight board has status, gates and schedules.
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/*
-        A stable name, with aria-expanded carrying the state. Renaming it on
-        open would give this and the panel's own close button the same
-        accessible name, and a reader would announce two identical controls.
-      */}
-      <button
-        type="button"
+  if (!open) {
+    return (
+      <motion.button
+        layoutId={morphId}
         ref={toggleRef}
+        type="button"
         className="chat__toggle"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-controls={panelId}
+        style={{ borderRadius: FAB_RADIUS }}
+        transition={morph}
+        onClick={() => setOpen(true)}
         aria-label="Travel assistant"
       >
-        {open ? (
-          <X size={22} weight="bold" aria-hidden="true" />
-        ) : (
+        <motion.span
+          className="chat__toggleIcon"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.14, delay: reduceMotion ? 0 : 0.08 }}
+        >
           <ChatCircleDots size={24} weight="fill" aria-hidden="true" />
-        )}
-      </button>
-    </>
+        </motion.span>
+      </motion.button>
+    );
+  }
+
+  return (
+    <motion.div
+      layoutId={morphId}
+      className="chat"
+      role="dialog"
+      aria-label="Travel assistant"
+      style={{ borderRadius: PANEL_RADIUS }}
+      transition={morph}
+    >
+      {/*
+        The contents fade in after the shape has most of the way opened.
+        Carrying them through the morph would stretch them with it.
+      */}
+      <motion.div
+        className="chat__body"
+        initial={reduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.16, delay: reduceMotion ? 0 : 0.1 }}
+      >
+        <header className="chat__head">
+          <div>
+            <h2 className="chat__title">Travel assistant</h2>
+            <p className="chat__context">
+              {airport
+                ? `Knows you are looking at ${airport}.`
+                : 'Airports, baggage, what to expect.'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="chat__close"
+            onClick={() => setOpen(false)}
+            aria-label="Close travel assistant"
+          >
+            <X size={16} weight="bold" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div
+          className="chat__log"
+          role="log"
+          aria-live="polite"
+          aria-busy={isSending}
+          aria-label="Conversation"
+        >
+          {messages.length === 0 && (
+            <div className="chat__empty">
+              <p className="chat__emptyText">Nothing asked yet. Try one of these:</p>
+              <ul className="chat__openers">
+                {OPENERS.map((opener) => (
+                  <li key={opener}>
+                    <button type="button" className="chat__opener" onClick={() => void ask(opener)}>
+                      {opener}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <AnimatePresence initial={false}>
+            {messages.map((message) => (
+              <motion.div
+                key={`${message.timestamp}-${message.role}`}
+                className={`bubble bubble--${message.role}`}
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {/* Rendered as text, never as markup: this is model output. */}
+                {message.content}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isSending && (
+            <div className="bubble bubble--assistant chat__thinking" aria-label="Thinking">
+              <span className="chat__dot" />
+              <span className="chat__dot" />
+              <span className="chat__dot" />
+            </div>
+          )}
+
+          {error && (
+            <div className="chat__error" role="alert">
+              <WarningCircle size={16} weight="fill" aria-hidden="true" />
+              <span>{error}</span>
+              <button type="button" className="chat__retry" onClick={retry}>
+                Try again
+              </button>
+            </div>
+          )}
+
+          <div ref={logEndRef} />
+        </div>
+
+        <form className="chat__composer" onSubmit={handleSubmit}>
+          <label className="visually-hidden" htmlFor="chat-input">
+            Your message
+          </label>
+          <textarea
+            id="chat-input"
+            ref={inputRef}
+            className="chat__input"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value.slice(0, MAX_CHARS))}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about your trip"
+            rows={1}
+            maxLength={MAX_CHARS}
+            disabled={isSending}
+          />
+          <button
+            type="submit"
+            className="chat__send"
+            disabled={isSending || draft.trim().length === 0}
+            aria-label="Send message"
+          >
+            <ArrowUp size={18} weight="bold" aria-hidden="true" />
+          </button>
+        </form>
+
+        <p className="chat__note">
+          No live flight data here. The flight board has status, gates and schedules.
+        </p>
+      </motion.div>
+    </motion.div>
   );
 }
