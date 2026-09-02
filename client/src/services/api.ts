@@ -60,10 +60,18 @@ export interface ChatResponse {
  * Sends the conversation and returns the assistant's reply. Only role and
  * content go over the wire; timestamps are ours for rendering, and the server
  * caps history anyway.
+ *
+ * The airport, when one is being looked at, is context for the system prompt
+ * rather than a lookup: the assistant still has no flight data, and asking it
+ * for any would spend quota this app deliberately keeps apart.
  */
-export async function sendChat(messages: Pick<Message, 'role' | 'content'>[]): Promise<string> {
+export async function sendChat(
+  messages: Pick<Message, 'role' | 'content'>[],
+  airport?: string,
+): Promise<string> {
   const { data } = await api.post<ChatResponse>('/chat', {
     messages: messages.map(({ role, content }) => ({ role, content })),
+    ...(airport ? { airport } : {}),
   });
 
   return data.reply;

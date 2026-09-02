@@ -87,6 +87,8 @@
   /* Layout */
   --page-max: 1200px;
   --header-height: 64px;
+  /* The assistant button. Shared, because the toast stack has to clear it. */
+  --fab-size: 56px;
   --z-header: 100;
   --z-overlay: 200;
 }

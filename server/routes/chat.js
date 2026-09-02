@@ -14,12 +14,35 @@ const MAX_TOTAL_CHARS = 8000;
 
 const ROLES = new Set(['user', 'assistant']);
 
+/** Same shape the flights route accepts, for the same reason. */
+const IATA = /^[A-Z]{3}$/;
+
+/**
+ * The airport the board is currently showing, if any.
+ *
+ * Validated to a bare IATA code rather than passed through, because this ends
+ * up inside the system prompt. Three letters cannot carry an instruction.
+ */
+function readAirport(raw, errors) {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+
+  const airport = String(raw).trim().toUpperCase();
+  if (!IATA.test(airport)) {
+    errors.push('airport must be a 3-letter IATA code');
+    return undefined;
+  }
+
+  return airport;
+}
+
 function readBody(body) {
   const errors = [];
+  const airport = readAirport(body?.airport, errors);
   const messages = Array.isArray(body?.messages) ? body.messages : null;
 
   if (!messages || messages.length === 0) {
-    return { messages: [], errors: ['messages must be a non-empty array'] };
+    errors.push('messages must be a non-empty array');
+    return { messages: [], airport, errors };
   }
 
   if (messages.length > MAX_MESSAGES) {
@@ -60,12 +83,13 @@ function readBody(body) {
       role: message?.role,
       content: typeof message?.content === 'string' ? message.content.trim() : '',
     })),
+    airport,
     errors,
   };
 }
 
 router.post('/', async (req, res, next) => {
-  const { messages, errors } = readBody(req.body);
+  const { messages, airport, errors } = readBody(req.body);
 
   if (errors.length > 0) {
     res.status(400).json({ error: 'Invalid conversation.', details: errors });
@@ -73,7 +97,7 @@ router.post('/', async (req, res, next) => {
   }
 
   try {
-    const reply = await chat({ system: buildSystemPrompt(), messages });
+    const reply = await chat({ system: buildSystemPrompt({ airport }), messages });
 
     // Token counts are logged, not returned: the budget is ours to watch, and
     // the client has no use for them.

@@ -7,13 +7,13 @@ import ErrorBoundary from './ErrorBoundary';
 import { searchAirports } from '../services/api';
 
 /*
- * The assistant is made to throw on render. Mocks are per file, so no other
+ * The flight page is made to throw on render. Mocks are per file, so no other
  * test sees this, and it lets the whole chain be exercised: a page fails, the
  * header is still there, and clicking it has to actually get you out.
  */
-vi.mock('../pages/AssistantPage', () => ({
+vi.mock('../pages/FlightPage', () => ({
   default: () => {
-    throw new Error('the assistant exploded');
+    throw new Error('the flight page exploded');
   },
 }));
 
@@ -21,6 +21,7 @@ vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../services/api')>()),
   searchAirports: vi.fn(),
   searchFlights: vi.fn(),
+  sendChat: vi.fn(),
 }));
 
 function Boom(): never {
@@ -114,10 +115,11 @@ describe('getting out of a failure', () => {
 
 describe('the header outside the boundary', () => {
   it('is a real way out of a page that threw', async () => {
+    window.history.pushState({}, '', '/flight/BA117');
+
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('link', { name: 'Assistant' }));
     expect(await screen.findByRole('heading', { name: FAILED })).toBeTruthy();
 
     // The point of putting the header outside the boundary. Without a reset it

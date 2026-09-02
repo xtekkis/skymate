@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
-import { searchAirports } from './services/api';
+import { getFlightByNumber, searchAirports } from './services/api';
 
 vi.mock('./services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./services/api')>()),
   searchAirports: vi.fn(),
   searchFlights: vi.fn(),
+  getFlightByNumber: vi.fn(),
+  sendChat: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -45,15 +47,30 @@ describe('the tab order', () => {
   });
 });
 
+describe('the assistant', () => {
+  it('is reachable from every page, not one of them', async () => {
+    vi.mocked(getFlightByNumber).mockResolvedValue({ number: 'BA117', count: 0, flights: [] });
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Travel assistant' })).toBeTruthy();
+
+    // It used to be a destination in the header. Now it follows you.
+    expect(screen.queryByRole('link', { name: 'Assistant' })).toBeNull();
+  });
+});
+
 describe('changing route', () => {
   it('moves focus into the new page rather than leaving it on the nav', async () => {
+    vi.mocked(getFlightByNumber).mockResolvedValue({ number: 'BA117', count: 0, flights: [] });
+    window.history.pushState({}, '', '/flight/BA117');
+
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('link', { name: 'Assistant' }));
+    await user.click(screen.getByRole('link', { name: 'Flights' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Travel assistant' })).toBeTruthy(),
+      expect(screen.getByRole('heading', { name: 'Flight schedules' })).toBeTruthy(),
     );
     // Without this, Tab would walk the header again instead of the page.
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('main')));

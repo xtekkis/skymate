@@ -1,7 +1,8 @@
 .toasts {
   position: fixed;
   right: var(--space-4);
-  bottom: var(--space-4);
+  /* Above the assistant button, which owns this corner. */
+  bottom: calc(var(--space-4) + var(--fab-size) + var(--space-3));
   z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
@@ -72,7 +73,7 @@
   .toasts {
     right: var(--space-3);
     left: var(--space-3);
-    bottom: var(--space-3);
+    bottom: calc(var(--space-3) + var(--fab-size) + var(--space-2));
     width: auto;
   }
 }

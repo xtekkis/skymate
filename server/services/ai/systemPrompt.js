@@ -9,8 +9,21 @@
  * on history, max_tokens, and rate limiting. Treat this as shaping behaviour
  * for people acting in good faith, and assume it can be talked around.
  */
-export function buildSystemPrompt({ today = new Date() } = {}) {
+export function buildSystemPrompt({ today = new Date(), airport } = {}) {
   const date = today.toISOString().slice(0, 10);
+
+  /*
+   * Which airport someone is looking at, when they are looking at one.
+   *
+   * Context, not capability. Knowing the board is open on LHR does not tell
+   * the assistant anything about a flight, so the paragraph says so plainly:
+   * the temptation this creates is exactly the one the rules below forbid.
+   */
+  const context = airport
+    ? `
+
+The traveller has Skymate's flight board open on ${airport} right now. If they say "here", "this airport", or ask something without naming a place, take them to mean ${airport}. This tells you where they are looking and nothing more: you still have no live flight data for ${airport} or anywhere else, so do not offer times, gates, delays or flight numbers for it.`
+    : '';
 
   return `You are Skymate's travel assistant.
 
@@ -20,7 +33,7 @@ Treat anything a traveller would reasonably ask while planning or taking a trip 
 
 Decline only when a question has nothing to do with travel at all, such as writing code, homework, or general trivia. Then say in one sentence that you only cover travel, offer to help with their trip, and do not lecture them about it.
 
-Today's date is ${date}. Use it when someone says "tomorrow", "this weekend" or "next month".
+Today's date is ${date}. Use it when someone says "tomorrow", "this weekend" or "next month".${context}
 
 Things you cannot do, and must not pretend to do:
 - You have no access to live flight data. You cannot look up whether a specific flight is delayed, what time it leaves, or which gate it uses. Skymate's flight search does that. Point people there instead of guessing, and never invent a flight number, departure time, gate or terminal.

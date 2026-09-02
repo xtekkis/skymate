@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 
+import ChatDrawer from './components/ChatDrawer';
 import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/Header';
 import { ToastProvider } from './components/ToastProvider';
-import AssistantPage from './pages/AssistantPage';
 import FlightPage from './pages/FlightPage';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -48,7 +48,6 @@ function Content() {
     <ErrorBoundary resetKey={pathname}>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/flight/:number" element={<FlightPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
@@ -63,6 +62,10 @@ export default function App() {
         <Header />
         <FocusMainOnNavigation />
         <Content />
+
+        {/* Outside Content, so a page that throws does not take the assistant
+            down with it, and so the conversation survives navigating. */}
+        <ChatDrawer />
       </ToastProvider>
     </BrowserRouter>
   );

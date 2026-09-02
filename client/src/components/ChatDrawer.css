@@ -1,34 +1,103 @@
-.assistant {
-  flex: 1;
-  display: flex;
-  min-height: 0;
+/*
+ * The assistant, anchored to the corner of whatever page you are on.
+ *
+ * Deliberately not a modal: it does not cover the board, does not trap focus,
+ * and does not dim the page behind it. You are meant to read a departure time
+ * and ask about it in the same glance, which a modal would prevent.
+ */
+
+.chat__toggle {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-overlay);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--fab-size);
+  height: var(--fab-size);
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  color: var(--accent-text);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    translate var(--duration-fast) var(--ease-out);
 }
 
-.assistant__inner {
+.chat__toggle:hover {
+  background: var(--accent-hover);
+}
+
+.chat__toggle:active {
+  translate: 0 1px;
+}
+
+.chat {
+  position: fixed;
+  right: var(--space-4);
+  /* Clears the button rather than covering it, so the way out stays visible. */
+  bottom: calc(var(--space-4) + var(--fab-size) + var(--space-3));
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  width: 100%;
-  max-width: 780px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-4);
+  width: min(420px, calc(100vw - var(--space-4) * 2));
+  max-height: min(560px, calc(100vh - var(--fab-size) - var(--space-8)));
+  padding: var(--space-4);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md);
 }
 
-.assistant__intro {
-  margin-bottom: var(--space-5);
+/* Head */
+
+.chat__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-.assistant__lead {
-  margin-top: var(--space-2);
+.chat__title {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.chat__context {
+  margin-top: 2px;
+  max-width: none;
+  font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+.chat__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.chat__close:hover {
+  color: var(--text);
+  background: var(--surface-sunken);
 }
 
 /* Log */
 
-.assistant__log {
+.chat__log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -43,9 +112,10 @@
 }
 
 .bubble {
-  max-width: 85%;
-  padding: var(--space-3) var(--space-4);
+  max-width: 88%;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-panel);
+  font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
   /* Replies are plain text, so newlines have to survive without markup. */
   white-space: pre-wrap;
@@ -66,18 +136,18 @@
 
 /* Empty state */
 
-.assistant__empty {
-  margin: auto 0;
-  padding: var(--space-4) 0;
+.chat__empty {
+  padding: var(--space-2) 0;
 }
 
-.assistant__emptyText {
+.chat__emptyText {
   margin-bottom: var(--space-3);
+  max-width: none;
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
-.assistant__openers {
+.chat__openers {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -86,7 +156,7 @@
   list-style: none;
 }
 
-.assistant__opener {
+.chat__opener {
   padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -99,37 +169,37 @@
     border-color var(--duration-fast) var(--ease-out);
 }
 
-.assistant__opener:hover {
+.chat__opener:hover {
   color: var(--text);
   border-color: var(--border-strong);
 }
 
 /* Thinking */
 
-.assistant__thinking {
+.chat__thinking {
   display: flex;
   align-items: center;
   gap: 5px;
   width: fit-content;
 }
 
-.assistant__dot {
+.chat__dot {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-pill);
   background: var(--text-faint);
-  animation: assistant-pulse 1.2s ease-in-out infinite;
+  animation: chat-pulse 1.2s ease-in-out infinite;
 }
 
-.assistant__dot:nth-child(2) {
+.chat__dot:nth-child(2) {
   animation-delay: 0.15s;
 }
 
-.assistant__dot:nth-child(3) {
+.chat__dot:nth-child(3) {
   animation-delay: 0.3s;
 }
 
-@keyframes assistant-pulse {
+@keyframes chat-pulse {
   0%,
   100% {
     opacity: 0.3;
@@ -141,22 +211,22 @@
 
 /* Error */
 
-.assistant__error {
+.chat__error {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--danger);
   border-radius: var(--radius-panel);
   color: var(--danger);
   font-size: var(--text-sm);
 }
 
-.assistant__error svg {
+.chat__error svg {
   flex-shrink: 0;
 }
 
-.assistant__retry {
+.chat__retry {
   margin-left: auto;
   padding: 2px var(--space-2);
   border-radius: var(--radius-control);
@@ -169,11 +239,11 @@
 
 /* Composer */
 
-.assistant__composer {
+.chat__composer {
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
   padding: var(--space-2);
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -181,35 +251,36 @@
   transition: border-color var(--duration-fast) var(--ease-out);
 }
 
-.assistant__composer:focus-within {
+.chat__composer:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-quiet);
 }
 
-.assistant__input {
+.chat__input {
   flex: 1;
   /* 44px, like every other control here, so the composer is a comfortable
      target on a touchscreen rather than the one place that is not. */
   min-height: 44px;
-  max-height: 160px;
+  max-height: 140px;
   padding: var(--space-2);
   /* Its own background, not a transparent hole: the home input has always
      carried one, and that is the page where the pointer behaved. */
   background: var(--surface);
   border: none;
-  resize: vertical;
+  resize: none;
+  font-size: var(--text-sm);
   line-height: var(--leading-normal);
 }
 
-.assistant__input:focus {
+.chat__input:focus {
   outline: none;
 }
 
-.assistant__input::placeholder {
+.chat__input::placeholder {
   color: var(--text-faint);
 }
 
-.assistant__send {
+.chat__send {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -222,21 +293,36 @@
   transition: background-color var(--duration-fast) var(--ease-out);
 }
 
-.assistant__send:hover:not(:disabled) {
+.chat__send:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
-.assistant__send:active:not(:disabled) {
+.chat__send:active:not(:disabled) {
   translate: 0 1px;
 }
 
-.assistant__note {
+.chat__note {
   margin-top: var(--space-2);
+  max-width: none;
   font-size: var(--text-xs);
   color: var(--text-faint);
 }
 
+/* Phones: the drawer is the screen, so it stops pretending to be a card. */
 @media (max-width: 640px) {
+  .chat {
+    right: var(--space-3);
+    left: var(--space-3);
+    bottom: calc(var(--space-3) + var(--fab-size) + var(--space-2));
+    width: auto;
+    max-height: calc(100vh - var(--fab-size) - var(--space-7));
+  }
+
+  .chat__toggle {
+    right: var(--space-3);
+    bottom: var(--space-3);
+  }
+
   .bubble {
     max-width: 100%;
   }

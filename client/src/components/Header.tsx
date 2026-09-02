@@ -3,10 +3,7 @@ import { NavLink } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
 import './Header.css';
 
-const navItems = [
-  { to: '/', label: 'Flights' },
-  { to: '/assistant', label: 'Assistant' },
-];
+const navItems = [{ to: '/', label: 'Flights' }];
 
 export default function Header() {
   return (
