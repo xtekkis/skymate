@@ -29,7 +29,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer);
       timers.current.delete(id);
     }
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+
+    // Returning the same array when there was nothing to remove. A suppressed
+    // duplicate still gets a timer, and six seconds later it dismisses a toast
+    // that was never shown; filtering regardless hands back a new array and
+    // re-renders this provider for no reason. Children are passed in as a prop
+    // and keep their identity, so they are not affected either way.
+    setToasts((current) =>
+      current.some((toast) => toast.id === id)
+        ? current.filter((toast) => toast.id !== id)
+        : current,
+    );
   }, []);
 
   const show = useCallback(
