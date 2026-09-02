@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -89,6 +89,26 @@ describe('opening and closing', () => {
   });
 });
 
+describe('the colour on the way back', () => {
+  it('returns as the panel colour and takes the accent on afterwards', async () => {
+    await open();
+
+    // fireEvent, not userEvent: this assertion has to land before the timer
+    // that brings the colour back does, and userEvent awaits enough ticks to
+    // lose that race.
+    fireEvent.click(screen.getByRole('button', { name: 'Close travel assistant' }));
+
+    // Reached by class on purpose: this layer has no role and no name, and
+    // its opacity is the whole behaviour. The button mounts at the panel's
+    // size, so wearing the accent immediately put a full screen of orange up
+    // before it shrank.
+    const wash = () => toggle().querySelector('.chat__wash') as HTMLElement;
+    expect(wash().style.opacity).not.toBe('1');
+
+    // And it does arrive, once the shape is button sized again.
+    await waitFor(() => expect(wash().style.opacity).toBe('1'), { timeout: 2000 });
+  });
+});
 describe('the airport it is looking at', () => {
   it('passes the searched airport as context', async () => {
     chat.mockResolvedValue('About two hours.');

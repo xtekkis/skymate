@@ -32,6 +32,13 @@
   inset: 0;
   background: var(--accent);
   border-radius: inherit;
+  /*
+   * Transparent until something says otherwise. On the frame the button mounts
+   * there is no inline opacity yet, so whatever is written here is what shows,
+   * and the button mounts at the panel's size. Fully opaque meant a screen of
+   * accent for that frame.
+   */
+  opacity: 0;
 }
 
 .chat__toggle:hover .chat__wash {

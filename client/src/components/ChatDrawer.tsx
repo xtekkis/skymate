@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUp, ChatCircleDots, WarningCircle, X } from '@phosphor-icons/react';
@@ -28,7 +28,10 @@ const MORPH_ID = 'chat-surface';
 const MORPH = { type: 'spring', stiffness: 380, damping: 34 } as const;
 
 /** Long enough to read as the colour arriving, short enough to keep up. */
-const WASH = { duration: 0.24, ease: [0.16, 1, 0.3, 1] } as const;
+const WASH = { duration: 0.2, ease: [0.16, 1, 0.3, 1] } as const;
+
+/** Roughly what the spring above takes to settle. */
+const MORPH_MS = 260;
 
 /** Corner radius as numbers, so the morph interpolates them without distorting. */
 const FAB_RADIUS = 28;
@@ -57,6 +60,15 @@ export default function ChatDrawer() {
   const [searchParams] = useSearchParams();
 
   const [open, setOpen] = useState(false);
+  /*
+   * Whether the button is wearing its accent yet.
+   *
+   * Kept in state rather than as an initial prop, because under a shared
+   * layout morph the arriving element is treated as a continuation of the one
+   * it replaced rather than as a mount, so its initial is skipped entirely.
+   * A value that changes after it is on screen always animates.
+   */
+  const [accent, setAccent] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -66,7 +78,33 @@ export default function ChatDrawer() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+  const accentTimer = useRef<number | undefined>(undefined);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => () => window.clearTimeout(accentTimer.current), []);
+
+  /** Opens with the accent already on: it is the button's own colour. */
+  function show() {
+    window.clearTimeout(accentTimer.current);
+    setAccent(true);
+    setOpen(true);
+  }
+
+  /**
+   * Closes, and lets the colour arrive afterwards.
+   *
+   * The button mounts at the panel's full size, which on a phone is the whole
+   * screen. Wearing the accent from the first frame put a full screen of
+   * orange up before it shrank, which read as a flash. It travels back as the
+   * panel's own colour and only becomes a button once it is button sized.
+   */
+  const hide = useCallback(() => {
+    setAccent(false);
+    setOpen(false);
+
+    window.clearTimeout(accentTimer.current);
+    accentTimer.current = window.setTimeout(() => setAccent(true), reduceMotion ? 0 : MORPH_MS);
+  }, [reduceMotion]);
 
   /*
    * The airport the board is showing, read from the URL rather than passed
@@ -96,12 +134,12 @@ export default function ChatDrawer() {
     if (!open) return;
 
     function onKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') hide();
     }
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  }, [open, hide]);
 
   /**
    * Takes the conversation to build on rather than always reading state,
@@ -179,22 +217,19 @@ export default function ChatDrawer() {
         className="chat__toggle"
         style={{ borderRadius: FAB_RADIUS }}
         transition={morph}
-        onClick={() => setOpen(true)}
+        onClick={show}
         aria-label="Travel assistant"
       >
         {/*
-          The accent arrives as opacity over the panel's own background rather
-          than as a background swap. A layout morph moves the box but not the
-          colour, so closing used to land a full size orange rectangle on
-          screen for a frame before it shrank. Opacity is also the only way to
-          animate this at all: the palette is oklch, which does not
-          interpolate.
+          The accent as a layer over the panel's own background, rather than as
+          the button's background. A layout morph animates the box and not the
+          colour, and opacity is the only way to animate this at all: the
+          palette is oklch, which does not interpolate.
         */}
         <motion.span
           className="chat__wash"
           aria-hidden="true"
-          initial={reduceMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: accent ? 1 : 0 }}
           transition={WASH}
         />
 
@@ -242,7 +277,7 @@ export default function ChatDrawer() {
           <button
             type="button"
             className="chat__close"
-            onClick={() => setOpen(false)}
+            onClick={hide}
             aria-label="Close travel assistant"
           >
             <X size={16} weight="bold" aria-hidden="true" />
