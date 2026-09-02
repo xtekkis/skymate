@@ -4,10 +4,18 @@ import MessageScreen from './MessageScreen';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  /**
+   * A failure is cleared whenever this changes. Pass the route: without it a
+   * boundary stays failed forever, and the header sitting outside it is a
+   * promise of a way out that does nothing.
+   */
+  resetKey?: string;
 }
 
 interface ErrorBoundaryState {
   failed: boolean;
+  /** The key the current failure belongs to, so a new one can be spotted. */
+  seenKey?: string;
 }
 
 /**
@@ -24,8 +32,26 @@ interface ErrorBoundaryState {
 export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { failed: false };
 
-  static getDerivedStateFromError(): ErrorBoundaryState {
+  static getDerivedStateFromError(): Partial<ErrorBoundaryState> {
     return { failed: true };
+  }
+
+  /**
+   * Clears a failure when the key changes.
+   *
+   * Derived from props rather than set in componentDidUpdate: doing it after
+   * the update means rendering the error screen once more before replacing it,
+   * and React rightly warns about that.
+   */
+  static getDerivedStateFromProps(
+    props: ErrorBoundaryProps,
+    state: ErrorBoundaryState,
+  ): Partial<ErrorBoundaryState> | null {
+    if (props.resetKey === state.seenKey) return null;
+
+    // Going somewhere else is a way out. If the new page throws too, this
+    // catches that on its own and shows the screen again.
+    return { failed: false, seenKey: props.resetKey };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {

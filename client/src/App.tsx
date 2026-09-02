@@ -34,21 +34,35 @@ function FocusMainOnNavigation() {
   return null;
 }
 
+/**
+ * The routes, and the boundary around them.
+ *
+ * Its own component so it can read the route, which is what the boundary
+ * resets on. The header sits outside the boundary so a failed page still shows
+ * a way to navigate, and that only means anything if navigating clears it.
+ */
+function Content() {
+  const { pathname } = useLocation();
+
+  return (
+    <ErrorBoundary resetKey={pathname}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/assistant" element={<AssistantPage />} />
+        <Route path="/flight/:number" element={<FlightPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </ErrorBoundary>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
         <Header />
         <FocusMainOnNavigation />
-        {/* Inside the header, so a failed page still leaves a way to navigate. */}
-        <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/assistant" element={<AssistantPage />} />
-            <Route path="/flight/:number" element={<FlightPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </ErrorBoundary>
+        <Content />
       </ToastProvider>
     </BrowserRouter>
   );
