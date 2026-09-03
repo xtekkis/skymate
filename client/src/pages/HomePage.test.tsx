@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -161,5 +162,69 @@ describe('the search in the URL', () => {
     expect(screen.getByRole('heading', { name: 'Flight schedules' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(flights).not.toHaveBeenCalled();
+  });
+});
+
+describe('narrowing the board to one destination', () => {
+  const bound = (number: string, iata: string, city: string): Flight => ({
+    ...flight(number),
+    id: `${number}-${iata}`,
+    counterpart: { iata, name: `${city} International`, municipality: city },
+  });
+
+  const mixed = () =>
+    flights.mockResolvedValue({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+      count: 3,
+      flights: [
+        bound('BA 117', 'JFK', 'New York'),
+        bound('BA 175', 'JFK', 'New York'),
+        bound('BA 304', 'CDG', 'Paris'),
+      ],
+    });
+
+  const rows = () => within(screen.getAllByRole('rowgroup')[1]).getAllByRole('row');
+
+  it('shows only that destination, without asking for the data again', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('table');
+    expect(rows()).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: /New York/ }));
+
+    expect(rows()).toHaveLength(2);
+    // The filter is a view over data already fetched. Asking again would spend
+    // an AeroDataBox unit to rearrange rows that are already on screen.
+    expect(flights).toHaveBeenCalledTimes(1);
+  });
+
+  it('says what it is showing, and out of how many', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('table');
+    await user.click(screen.getByRole('button', { name: /New York/ }));
+
+    expect(screen.getByRole('status').textContent).toBe('2 of 3 departures, to JFK');
+  });
+
+  it('gives the whole board back', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('table');
+    await user.click(screen.getByRole('button', { name: /New York/ }));
+    await user.click(screen.getByRole('button', { name: 'Show all destinations' }));
+
+    expect(rows()).toHaveLength(3);
+    expect(screen.getByRole('status').textContent).toBe('3 departures at LHR');
   });
 });

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
+import DestinationGrid from '../components/DestinationGrid';
 import FlightList from '../components/FlightList';
 import SearchForm from '../components/SearchForm';
 import type { SearchParams } from '../models';
@@ -51,6 +52,16 @@ export default function HomePage() {
   const [result, setResult] = useState<FlightSearchResponse | null>(null);
   const [error, setError] = useState('');
 
+  /*
+   * The destination the board is narrowed to, if any.
+   *
+   * Held here rather than in the URL, unlike the search itself. The URL is
+   * what the effect below watches, so writing a filter into it would re-run
+   * the search on every card press and spend an AeroDataBox unit to rearrange
+   * rows already on screen. This is a view over data we have, not a new query.
+   */
+  const [destination, setDestination] = useState<string | null>(null);
+
   /** Guards against a slow first search landing after a faster second one. */
   const latestRequest = useRef(0);
 
@@ -75,6 +86,8 @@ export default function HomePage() {
         const data = await searchFlights(params);
         if (id !== latestRequest.current) return;
         setResult(data);
+        // A filter belongs to the results it was chosen from.
+        setDestination(null);
         setPhase('done');
       } catch (caught) {
         if (id !== latestRequest.current) return;
@@ -95,6 +108,7 @@ export default function HomePage() {
     if (!search) {
       setPhase('idle');
       setResult(null);
+      setDestination(null);
       return;
     }
     void run(search);
@@ -108,13 +122,21 @@ export default function HomePage() {
    * search landed and how many flights there are; the table is then theirs to
    * navigate.
    */
+  const flights = result
+    ? destination
+      ? result.flights.filter((flight) => flight.counterpart.iata === destination)
+      : result.flights
+    : [];
+
   const status =
     phase === 'loading'
       ? 'Searching flights'
       : phase === 'done' && result
         ? result.count === 0
           ? 'No flights in that window'
-          : `${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'} at ${result.airport}`
+          : destination
+            ? `${flights.length} of ${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'}, to ${destination}`
+            : `${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'} at ${result.airport}`
         : '';
 
   /** Submitting writes the URL. The effect above notices and does the work. */
@@ -188,10 +210,26 @@ export default function HomePage() {
         {phase === 'done' && result && result.count > 0 && (
           <>
             <p className="results__count">
-              {result.count} {result.direction === 'departure' ? 'departures' : 'arrivals'} at{' '}
-              <span className="tabular">{result.airport}</span>
+              {destination ? (
+                <>
+                  {flights.length} of {result.count}{' '}
+                  {result.direction === 'departure' ? 'departures' : 'arrivals'}, to{' '}
+                  <span className="tabular">{destination}</span>
+                </>
+              ) : (
+                <>
+                  {result.count} {result.direction === 'departure' ? 'departures' : 'arrivals'} at{' '}
+                  <span className="tabular">{result.airport}</span>
+                </>
+              )}
             </p>
-            <FlightList flights={result.flights} direction={result.direction} />
+            <FlightList flights={flights} direction={result.direction} />
+
+            <DestinationGrid
+              flights={result.flights}
+              selected={destination}
+              onSelect={setDestination}
+            />
           </>
         )}
       </div>
