@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import FlightList from './FlightList';
 import type { Flight, FlightDirection } from '../models';
@@ -17,6 +17,27 @@ beforeAll(() => {
 
 afterAll(() => {
   vi.unstubAllEnvs();
+});
+
+/** jsdom answers no media query, so a test that wants motion has to say so. */
+function allowMotion(allowed: boolean) {
+  window.matchMedia = ((query: string) =>
+    ({
+      matches: allowed && query.includes('no-preference'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList) as typeof window.matchMedia;
+}
+
+const originalMatchMedia = window.matchMedia;
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
 });
 
 const flight = (over: Partial<Flight> = {}): Flight => ({
@@ -113,5 +134,45 @@ describe('opening a flight', () => {
     await user.click(within(rows()[0]).getByRole('link', { name: 'BA 117' }));
 
     expect(await screen.findByText('detail page')).toBeTruthy();
+  });
+});
+
+describe('a cancelled flight', () => {
+  it('is marked as one rather than only coloured as one', () => {
+    board([flight({ status: 'Canceled' })]);
+
+    expect(rows()[0].className).toContain('board__row--cancelled');
+    expect(within(rows()[0]).getByText('Cancelled')).toBeTruthy();
+  });
+});
+
+describe('the rows arriving', () => {
+  it('ends with every row visible', async () => {
+    allowMotion(true);
+    board([flight({ id: 'a' }), flight({ id: 'b' })]);
+
+    // Proves the animation actually ran, so the assertion below is not passing
+    // because nothing happened.
+    expect(rows()[0].style.opacity).toBe('0');
+
+    // The whole risk of animating an entrance: a board that never finishes
+    // animating is a board nobody can read. from() plus clearProps means the
+    // rows are handed back to CSS at the end, wearing nothing.
+    await waitFor(
+      () => {
+        for (const row of rows()) expect(row.style.opacity).toBe('');
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it('does not touch the rows at all when motion is unwelcome', () => {
+    allowMotion(false);
+    board([flight()]);
+
+    // Not "animates faster": nothing is set up, so there is nothing to leave
+    // behind if it is interrupted.
+    expect(rows()[0].style.opacity).toBe('');
+    expect(rows()[0].style.transform).toBe('');
   });
 });

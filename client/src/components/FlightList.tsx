@@ -1,7 +1,12 @@
+import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 
 import type { Flight, FlightDirection, FlightStatus } from '../models';
 import './FlightList.css';
+
+gsap.registerPlugin(useGSAP);
 
 interface FlightListProps {
   flights: Flight[];
@@ -59,6 +64,36 @@ function detailHref(flight: Flight) {
 
 export default function FlightList({ flights, direction }: FlightListProps) {
   const navigate = useNavigate();
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Rows arrive rather than appear, the way a board fills in.
+   *
+   * from() rather than fromTo(): the start state is the one GSAP invents, so
+   * a board whose animation never runs is a board that is simply visible.
+   * Nothing here can leave a row stuck at zero opacity.
+   */
+  useGSAP(
+    () => {
+      const media = gsap.matchMedia();
+
+      media.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.from('.board__row', {
+          opacity: 0,
+          y: 6,
+          duration: 0.3,
+          ease: 'power2.out',
+          stagger: 0.02,
+          // Hands the rows back to CSS afterwards, so nothing is left wearing
+          // an inline transform that a later hover or layout has to fight.
+          clearProps: 'opacity,transform',
+        });
+      });
+
+      return () => media.revert();
+    },
+    { scope: boardRef, dependencies: [flights], revertOnUpdate: true },
+  );
 
   /**
    * Clicking anywhere on the row follows the same link. Clicks that landed on
@@ -71,7 +106,7 @@ export default function FlightList({ flights, direction }: FlightListProps) {
   }
 
   return (
-    <div className="board">
+    <div className="board" ref={boardRef}>
       <table className="board__table">
         <caption className="visually-hidden">
           {direction === 'departure' ? 'Departures' : 'Arrivals'},{' '}
@@ -96,7 +131,9 @@ export default function FlightList({ flights, direction }: FlightListProps) {
           {flights.map((flight) => (
             <tr
               key={flight.id}
-              className="board__row"
+              className={
+                flight.status === 'Canceled' ? 'board__row board__row--cancelled' : 'board__row'
+              }
               onClick={(event) => openRow(event, flight)}
             >
               <td className="board__time tabular">
@@ -125,6 +162,14 @@ export default function FlightList({ flights, direction }: FlightListProps) {
 
               <td>
                 <span className={`badge badge--${STATUS_TONE[flight.status]}`}>
+                  {/* Colour is never the only signal, but a dot beside the
+                      word is what makes a board scannable at a glance. */}
+                  <span
+                    className={
+                      flight.status === 'Boarding' ? 'badge__dot badge__dot--live' : 'badge__dot'
+                    }
+                    aria-hidden="true"
+                  />
                   {STATUS_LABEL[flight.status]}
                 </span>
               </td>
