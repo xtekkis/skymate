@@ -6,6 +6,7 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 import DestinationGrid from '../components/DestinationGrid';
 import FlightList from '../components/FlightList';
 import SearchForm from '../components/SearchForm';
+import StoryBlocks from '../components/StoryBlocks';
 import type { SearchParams } from '../models';
 import { useToast } from '../components/toastContext';
 import {
@@ -233,6 +234,8 @@ export default function HomePage() {
           </>
         )}
       </div>
+
+      <StoryBlocks />
     </motion.main>
   );
 }

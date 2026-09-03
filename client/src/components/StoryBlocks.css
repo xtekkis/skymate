@@ -1,0 +1,59 @@
+/*
+ * Three short blocks, and a hard ceiling on how much scroll they may take.
+ *
+ * The whole page is budgeted at three and a half screens, and this section is
+ * the one most likely to creep. Kept to a single column of tight blocks: three
+ * things said once, not a landing page grown out of a utility.
+ */
+.story {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.story__block {
+  max-width: 58ch;
+}
+
+/*
+ * Alternating indent. Enough to read as considered rather than stacked, and
+ * small enough that the eye still tracks a single left edge down the page.
+ */
+.story__block:nth-child(2) {
+  align-self: flex-start;
+  margin-left: clamp(0px, 6vw, var(--space-8));
+}
+
+.story__block:nth-child(3) {
+  align-self: flex-start;
+  margin-left: clamp(0px, 12vw, calc(var(--space-8) * 2));
+}
+
+.story__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.story__body {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .story {
+    gap: var(--space-4);
+    margin-top: var(--space-7);
+  }
+
+  /* No room to indent on a phone, and nothing gained by trying. */
+  .story__block:nth-child(2),
+  .story__block:nth-child(3) {
+    margin-left: 0;
+  }
+}
