@@ -159,3 +159,7 @@ dist-ssr
 
 # pnpm debug log
 pnpm-debug.log*
+
+# Raw hero footage. The shipped clip is client/public/hero.mp4, cut and
+# compressed from this; the original is 21MB and git cannot delta a video.
+client/public/hero.mp4.mp4
