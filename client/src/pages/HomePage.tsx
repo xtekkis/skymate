@@ -5,6 +5,7 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import DestinationGrid from '../components/DestinationGrid';
 import FlightList from '../components/FlightList';
+import HeroScroll from '../components/HeroScroll';
 import SearchForm from '../components/SearchForm';
 import StoryBlocks from '../components/StoryBlocks';
 import type { SearchParams } from '../models';
@@ -151,91 +152,95 @@ export default function HomePage() {
   }
 
   return (
-    <motion.main
-      id="main"
-      tabIndex={-1}
-      className="page"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <h1>Flight schedules</h1>
-      <p className="page__lead">
-        Live departures and arrivals for any airport, with status, terminal and aircraft.
-      </p>
+    <>
+      <HeroScroll />
 
-      <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
-
-      <div className="results" aria-busy={phase === 'loading'}>
-        {/* Always mounted. A live region that appears at the same moment as its
-            text is often missed, because there was nothing there to change. */}
-        <p className="visually-hidden" role="status">
-          {status}
+      <motion.main
+        id="main"
+        tabIndex={-1}
+        className="page"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1>Flight schedules</h1>
+        <p className="page__lead">
+          Live departures and arrivals for any airport, with status, terminal and aircraft.
         </p>
 
-        {phase === 'loading' && (
-          <div className="skeleton" aria-hidden="true">
-            {Array.from({ length: SKELETON_ROWS }, (_, row) => (
-              <div className="skeleton__row" key={row}>
-                <span className="skeleton__bar skeleton__bar--time" />
-                <span className="skeleton__bar skeleton__bar--number" />
-                <span className="skeleton__bar skeleton__bar--airline" />
-                <span className="skeleton__bar skeleton__bar--status" />
+        <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
+
+        <div className="results" aria-busy={phase === 'loading'}>
+          {/* Always mounted. A live region that appears at the same moment as its
+              text is often missed, because there was nothing there to change. */}
+          <p className="visually-hidden" role="status">
+            {status}
+          </p>
+
+          {phase === 'loading' && (
+            <div className="skeleton" aria-hidden="true">
+              {Array.from({ length: SKELETON_ROWS }, (_, row) => (
+                <div className="skeleton__row" key={row}>
+                  <span className="skeleton__bar skeleton__bar--time" />
+                  <span className="skeleton__bar skeleton__bar--number" />
+                  <span className="skeleton__bar skeleton__bar--airline" />
+                  <span className="skeleton__bar skeleton__bar--status" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {phase === 'error' && (
+            <div className="notice notice--error" role="alert">
+              <WarningCircle size={20} weight="fill" aria-hidden="true" />
+              <div>
+                <p className="notice__title">Search failed</p>
+                <p className="notice__body">{error}</p>
               </div>
-            ))}
-          </div>
-        )}
-
-        {phase === 'error' && (
-          <div className="notice notice--error" role="alert">
-            <WarningCircle size={20} weight="fill" aria-hidden="true" />
-            <div>
-              <p className="notice__title">Search failed</p>
-              <p className="notice__body">{error}</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {phase === 'done' && result && result.count === 0 && (
-          <div className="notice">
-            <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
-            <div>
-              <p className="notice__title">No flights in that window</p>
-              <p className="notice__body">
-                Try a longer window, a different time of day, or check the airport code.
+          {phase === 'done' && result && result.count === 0 && (
+            <div className="notice">
+              <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
+              <div>
+                <p className="notice__title">No flights in that window</p>
+                <p className="notice__body">
+                  Try a longer window, a different time of day, or check the airport code.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {phase === 'done' && result && result.count > 0 && (
+            <>
+              <p className="results__count">
+                {destination ? (
+                  <>
+                    {flights.length} of {result.count}{' '}
+                    {result.direction === 'departure' ? 'departures' : 'arrivals'}, to{' '}
+                    <span className="tabular">{destination}</span>
+                  </>
+                ) : (
+                  <>
+                    {result.count} {result.direction === 'departure' ? 'departures' : 'arrivals'} at{' '}
+                    <span className="tabular">{result.airport}</span>
+                  </>
+                )}
               </p>
-            </div>
-          </div>
-        )}
+              <FlightList flights={flights} direction={result.direction} />
 
-        {phase === 'done' && result && result.count > 0 && (
-          <>
-            <p className="results__count">
-              {destination ? (
-                <>
-                  {flights.length} of {result.count}{' '}
-                  {result.direction === 'departure' ? 'departures' : 'arrivals'}, to{' '}
-                  <span className="tabular">{destination}</span>
-                </>
-              ) : (
-                <>
-                  {result.count} {result.direction === 'departure' ? 'departures' : 'arrivals'} at{' '}
-                  <span className="tabular">{result.airport}</span>
-                </>
-              )}
-            </p>
-            <FlightList flights={flights} direction={result.direction} />
+              <DestinationGrid
+                flights={result.flights}
+                selected={destination}
+                onSelect={setDestination}
+              />
+            </>
+          )}
+        </div>
 
-            <DestinationGrid
-              flights={result.flights}
-              selected={destination}
-              onSelect={setDestination}
-            />
-          </>
-        )}
-      </div>
-
-      <StoryBlocks />
-    </motion.main>
+          <StoryBlocks />
+      </motion.main>
+    </>
   );
 }
