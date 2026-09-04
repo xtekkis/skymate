@@ -89,6 +89,17 @@ describe('opening and closing', () => {
   });
 });
 
+describe('scrolling inside the conversation', () => {
+  it('keeps its own scroll rather than moving the page', async () => {
+    await open();
+
+    // Same reason as the board: the document's scroll is intercepted, and
+    // without this reading back through a long conversation scrolls the page.
+    const log = document.querySelector('.chat__log');
+    expect(log?.hasAttribute('data-lenis-prevent')).toBe(true);
+  });
+});
+
 describe('the colour on the way back', () => {
   it('returns as the panel colour and takes the accent on afterwards', async () => {
     await open();

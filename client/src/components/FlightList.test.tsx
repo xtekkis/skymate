@@ -137,6 +137,17 @@ describe('opening a flight', () => {
   });
 });
 
+describe('scrolling inside the board', () => {
+  it('keeps its own scroll rather than moving the page', () => {
+    board([flight()]);
+
+    // Smooth scrolling intercepts the whole document. Without this the board
+    // cannot be dragged sideways: the page slides underneath instead.
+    const wrap = document.querySelector('.board');
+    expect(wrap?.hasAttribute('data-lenis-prevent')).toBe(true);
+  });
+});
+
 describe('a cancelled flight', () => {
   it('is marked as one rather than only coloured as one', () => {
     board([flight({ status: 'Canceled' })]);

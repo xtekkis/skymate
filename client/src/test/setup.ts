@@ -33,3 +33,16 @@ if (!window.matchMedia) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+
+/*
+ * jsdom has no layout, so it ships no ResizeObserver either. Anything that
+ * reacts to an element changing size constructs one on mount and throws
+ * without it. Observing nothing is correct here: sizes never change.
+ */
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

@@ -106,7 +106,7 @@ export default function FlightList({ flights, direction }: FlightListProps) {
   }
 
   return (
-    <div className="board" ref={boardRef}>
+    <div className="board" ref={boardRef} data-lenis-prevent>
       <table className="board__table">
         <caption className="visually-hidden">
           {direction === 'departure' ? 'Departures' : 'Arrivals'},{' '}

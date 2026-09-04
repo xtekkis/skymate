@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import ChatDrawer from './components/ChatDrawer';
+import SmoothScroll from './components/SmoothScroll';
 import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/Header';
 import { ToastProvider } from './components/ToastProvider';
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
+        <SmoothScroll />
         <Header />
         <FocusMainOnNavigation />
         <Content />
