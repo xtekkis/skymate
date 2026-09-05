@@ -29,6 +29,31 @@
   --chrome-muted: oklch(0.72 0.012 260);
   --chrome-border: oklch(0.31 0.019 262);
 
+  /*
+   * The board.
+   *
+   * Its surfaces are translucent, because a backdrop shows through them, so
+   * they cannot be --surface with an opacity: the alpha is part of the colour.
+   * Named here rather than written inline five times, and dark in both themes
+   * for the same reason the chrome above is: the board is chrome.
+   */
+  --night-deep: oklch(0.15 0.02 264);
+  --ink: oklch(0.985 0.003 260);
+
+  --board-header: oklch(0.15 0.014 262 / 0.72);
+  --board-sidebar: oklch(0.17 0.015 262 / 0.62);
+  --board-ruler: oklch(0.16 0.014 262 / 0.55);
+  --board-panel: oklch(0.185 0.015 262 / 0.94);
+  --board-assistant: oklch(0.195 0.016 262 / 0.96);
+  /* The one card that is open, sitting a step above the rest. */
+  --board-selected: oklch(0.25 0.02 262);
+
+  /* Ruler ticks and the scrubber: white over the night, at four weights. */
+  --rule-half: oklch(1 0 0 / 0.07);
+  --rule-track: oklch(1 0 0 / 0.1);
+  --rule-hour: oklch(1 0 0 / 0.16);
+  --rule-thumb: oklch(1 0 0 / 0.32);
+
   /* Single accent, dark text on top for AA contrast */
   --accent: oklch(0.7 0.163 48);
   --accent-hover: oklch(0.655 0.172 45);
