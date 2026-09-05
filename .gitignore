@@ -163,3 +163,8 @@ pnpm-debug.log*
 # Raw hero footage. The shipped clip is client/public/hero.mp4, cut and
 # compressed from this; the original is 21MB and git cannot delta a video.
 client/public/hero.mp4.mp4
+
+# The design handoff: prototypes, tokens and reference stills. Read from, not
+# built from, and it carries its own copy of a design system this repo already
+# has in client/src/index.css.
+skymate_design/
