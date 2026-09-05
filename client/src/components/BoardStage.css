@@ -1,0 +1,74 @@
+/*
+ * The time axis.
+ *
+ * Nothing here scrolls in the browser's sense. The board is dragged, so the
+ * stage clips and the layers inside it are moved by transform, which is the
+ * only way to keep a pan on the compositor rather than in layout.
+ */
+.stage {
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  /* The board takes the gesture itself; the page has nowhere to scroll to. */
+  touch-action: none;
+}
+
+/* The ruler */
+
+.stage__ruler {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 46px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--board-ruler);
+  backdrop-filter: blur(6px);
+  /* It is a caption on the canvas, never a thing you can grab. */
+  pointer-events: none;
+}
+
+/*
+ * The strip that actually travels. The ruler above it stays put and clips,
+ * so the hours slide behind a fixed frame instead of the frame moving too.
+ */
+.stage__rulerInner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.stage__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--rule-half);
+}
+
+.stage__tick--hour {
+  border-left-color: var(--rule-hour);
+}
+
+.stage__tickLabel {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The canvas */
+
+.stage__canvas {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  height: 100%;
+  will-change: transform;
+}
