@@ -1,0 +1,102 @@
+/*
+ * The board's chrome bar.
+ *
+ * Translucent rather than solid, because the backdrop runs behind the whole
+ * board and stopping it at the header would draw a line across the sky.
+ */
+.masthead {
+  position: relative;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--header-height);
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--board-header);
+  backdrop-filter: blur(10px);
+  color: var(--chrome-text);
+}
+
+.masthead__side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.masthead__side + .masthead__side {
+  gap: var(--space-3);
+}
+
+.masthead__brand {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/*
+ * The two mono labels: "board live" on the left, the board's own name on the
+ * right. Same treatment, because they are the same kind of thing — a caption
+ * on the state of the room rather than content.
+ */
+.masthead__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+  white-space: nowrap;
+}
+
+/* Paired with the words beside it, so the colour is never the only signal. */
+.masthead__dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--ok);
+  animation: masthead-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes masthead-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.masthead__clock {
+  font-size: var(--text-sm);
+  color: var(--chrome-muted);
+}
+
+.masthead__rule {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  background: var(--chrome-border);
+}
+
+/* Phones: the brand and the clock survive, the captions do not. */
+@media (max-width: 640px) {
+  .masthead {
+    padding: 0 var(--space-4);
+  }
+
+  .masthead__side {
+    gap: var(--space-3);
+  }
+
+  .masthead__label {
+    letter-spacing: 0.1em;
+  }
+}
