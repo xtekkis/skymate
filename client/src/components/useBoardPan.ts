@@ -13,6 +13,12 @@ interface BoardPanOptions {
 /** Past this, a pointer was dragging the board rather than clicking a card. */
 export const DRAG_SLOP = 4;
 
+/** What a flick keeps, frame to frame, once the pointer has gone. */
+export const DECAY = 0.92;
+
+/** Below a quarter of a pixel a frame there is nothing left to see. */
+export const MIN_VELOCITY = 0.25;
+
 /**
  * Dragging the board.
  *
@@ -29,6 +35,8 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
   const pan = useRef(0);
   const drag = useRef<{ x: number; from: number } | null>(null);
   const moved = useRef(false);
+  const velocity = useRef(0);
+  const frame = useRef(0);
 
   // Read inside the listeners rather than captured, so a window change does
   // not need the listeners torn down and rebuilt.
@@ -50,9 +58,34 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       if (rulerRef.current) rulerRef.current.style.transform = offset;
     }
 
+    /**
+     * Carries a flick on after the pointer has gone.
+     *
+     * The board is heavy: letting go mid-sweep and having it stop dead reads
+     * as the gesture being dropped rather than finished.
+     */
+    function glide() {
+      cancelAnimationFrame(frame.current);
+
+      const step = () => {
+        velocity.current *= DECAY;
+        if (Math.abs(velocity.current) < MIN_VELOCITY) return;
+
+        apply(pan.current + velocity.current);
+        frame.current = requestAnimationFrame(step);
+      };
+
+      frame.current = requestAnimationFrame(step);
+    }
+
     function onPointerDown(event: PointerEvent) {
       // Controls sitting on the board are still controls.
       if ((event.target as HTMLElement).closest('button, input, select, a, textarea')) return;
+
+      // Catching a board that is still travelling stops it, the way catching
+      // a spinning thing does.
+      cancelAnimationFrame(frame.current);
+      velocity.current = 0;
 
       drag.current = { x: event.clientX, from: pan.current };
       moved.current = false;
@@ -64,13 +97,23 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
 
       const dx = event.clientX - drag.current.x;
       if (Math.abs(dx) > DRAG_SLOP) moved.current = true;
-      apply(drag.current.from + dx);
+
+      const next = drag.current.from + dx;
+      // How far this move asked to travel, which is what carries on afterwards.
+      velocity.current = next - pan.current;
+      apply(next);
     }
 
     function onPointerUp() {
       if (!drag.current) return;
+
+      const wasDrag = moved.current;
       drag.current = null;
       stage!.style.cursor = 'grab';
+
+      // A press that never moved is a press, and a card underneath it is
+      // about to be opened. Nothing should slide out from under it.
+      if (wasDrag) glide();
     }
 
     stage.addEventListener('pointerdown', onPointerDown);
@@ -79,6 +122,7 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
     window.addEventListener('pointercancel', onPointerUp);
 
     return () => {
+      cancelAnimationFrame(frame.current);
       stage.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);

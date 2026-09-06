@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import BoardStage from './BoardStage';
 import { contentWidth } from './boardGeometry';
@@ -124,5 +124,83 @@ describe('what it leaves alone', () => {
     // A window listener outlives the component that added it, and this one
     // writes to a node that is no longer in the document.
     expect(() => fireEvent.pointerMove(window, { clientX: 100 })).not.toThrow();
+  });
+});
+
+describe('letting go mid sweep', () => {
+  beforeEach(() => {
+    // Momentum runs on animation frames, so the clock has to be ours.
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A flick: two moves, so there is a per-frame delta to carry on with. */
+  function flick(stage: HTMLElement) {
+    fireEvent.pointerDown(stage, { clientX: 700 });
+    fireEvent.pointerMove(window, { clientX: 620 });
+    fireEvent.pointerMove(window, { clientX: 540 });
+    fireEvent.pointerUp(window);
+  }
+
+  it('keeps travelling after the pointer has gone', () => {
+    const { stage, canvas } = board();
+
+    flick(stage);
+    const atRelease = xOf(canvas);
+    vi.advanceTimersByTime(100);
+
+    // Stopping dead reads as the gesture being dropped rather than finished.
+    expect(xOf(canvas)).toBeLessThan(atRelease);
+  });
+
+  it('settles instead of running forever', () => {
+    const { stage, canvas } = board();
+
+    flick(stage);
+    vi.advanceTimersByTime(3000);
+    const settled = xOf(canvas);
+    vi.advanceTimersByTime(3000);
+
+    expect(xOf(canvas)).toBe(settled);
+  });
+
+  it('does not glide from a press that never moved', () => {
+    const { stage, canvas } = board();
+
+    fireEvent.pointerDown(stage, { clientX: 600 });
+    fireEvent.pointerUp(window);
+    vi.advanceTimersByTime(500);
+
+    // A card is under that press and is about to be opened. Nothing may
+    // slide out from under it.
+    expect(canvas.style.transform).toBe('');
+  });
+
+  it('stops when the board is caught again', () => {
+    const { stage, canvas } = board();
+
+    flick(stage);
+    vi.advanceTimersByTime(50);
+    fireEvent.pointerDown(stage, { clientX: 400 });
+    const caught = xOf(canvas);
+    vi.advanceTimersByTime(500);
+
+    // Catching a thing that is still travelling stops it.
+    expect(xOf(canvas)).toBe(caught);
+  });
+
+  it('drops the frame when the stage goes away', () => {
+    const view = render(<BoardStage start={at(8)} windowHours={WINDOW} />);
+    const stage = view.container.querySelector<HTMLElement>('.stage')!;
+    Object.defineProperty(stage, 'clientWidth', { value: 900, configurable: true });
+
+    flick(stage);
+    view.unmount();
+
+    // A frame loop outlives the component that started it.
+    expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
   });
 });
