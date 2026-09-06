@@ -1,6 +1,7 @@
-import { type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import { contentWidth, toTicks } from './boardGeometry';
+import { useBoardPan } from './useBoardPan';
 import './BoardStage.css';
 
 interface BoardStageProps {
@@ -21,11 +22,18 @@ interface BoardStageProps {
  */
 export default function BoardStage({ start, windowHours, children }: BoardStageProps) {
   const ticks = toTicks(start, windowHours);
+  const width = contentWidth(windowHours);
+
+  const stageRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+
+  useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth: width });
 
   return (
-    <section className="stage" aria-label="Flight timeline">
+    <section className="stage" ref={stageRef} aria-label="Flight timeline">
       <div className="stage__ruler">
-        <div className="stage__rulerInner" style={{ width: contentWidth(windowHours) }}>
+        <div className="stage__rulerInner" ref={rulerRef} style={{ width }}>
           {ticks.map((tick) => (
             <div
               key={tick.at}
@@ -38,7 +46,7 @@ export default function BoardStage({ start, windowHours, children }: BoardStageP
         </div>
       </div>
 
-      <div className="stage__canvas" style={{ width: contentWidth(windowHours) }}>
+      <div className="stage__canvas" ref={canvasRef} style={{ width }}>
         {children}
       </div>
     </section>

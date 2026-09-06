@@ -66,6 +66,18 @@ export function toTicks(start: number, windowHours: number): Tick[] {
   return ticks;
 }
 
+/**
+ * Where a pan is allowed to sit.
+ *
+ * Zero is the window's start, and there is nothing before it. The far end is
+ * whatever is left once the viewport has taken its share, and when the content
+ * is narrower than the viewport there is nowhere to go at all.
+ */
+export function clampPan(value: number, viewport: number, content: number) {
+  const furthest = Math.min(0, viewport - content);
+  return Math.max(furthest, Math.min(0, value));
+}
+
 /** How wide the canvas has to be to hold the whole window, plus the last card. */
 export function contentWidth(windowHours: number) {
   return windowHours * 60 * PX_PER_MINUTE + CARD_W + GUTTER * 5;

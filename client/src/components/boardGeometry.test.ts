@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { GUTTER, PX_PER_MINUTE, hhmm, offsetFor, toTicks } from './boardGeometry';
+import { GUTTER, PX_PER_MINUTE, clampPan, hhmm, offsetFor, toTicks } from './boardGeometry';
 
 const at = (h: number, m = 0) => h * 60 + m;
 
@@ -73,5 +73,26 @@ describe('the ruler', () => {
     const ticks = toTicks(at(8), 1);
 
     expect(ticks[1].left - ticks[0].left).toBe(Math.round(30 * PX_PER_MINUTE));
+  });
+});
+
+describe('how far a pan may travel', () => {
+  it('will not go back past the start', () => {
+    expect(clampPan(240, 900, 4000)).toBe(0);
+  });
+
+  it('stops once the last of the content is on screen', () => {
+    // Not at -4000: the viewport is already showing 900 of it.
+    expect(clampPan(-9000, 900, 4000)).toBe(-3100);
+  });
+
+  it('leaves anything in between alone', () => {
+    expect(clampPan(-1200, 900, 4000)).toBe(-1200);
+  });
+
+  it('refuses to move when it all fits already', () => {
+    // Both ends collapse onto zero, so there is nowhere to go.
+    expect(clampPan(-500, 4000, 900)).toBe(0);
+    expect(clampPan(500, 4000, 900)).toBe(0);
   });
 });
