@@ -1,5 +1,5 @@
-import { fireEvent, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import BoardStage from './BoardStage';
 import { contentWidth } from './boardGeometry';
@@ -128,15 +128,6 @@ describe('what it leaves alone', () => {
 });
 
 describe('letting go mid sweep', () => {
-  beforeEach(() => {
-    // Momentum runs on animation frames, so the clock has to be ours.
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   /** A flick: two moves, so there is a per-frame delta to carry on with. */
   function flick(stage: HTMLElement) {
     fireEvent.pointerDown(stage, { clientX: 700 });
@@ -145,62 +136,90 @@ describe('letting go mid sweep', () => {
     fireEvent.pointerUp(window);
   }
 
-  it('keeps travelling after the pointer has gone', () => {
+  /** Long enough for several real animation frames to have gone by. */
+  const aFewFrames = () => new Promise((resolve) => setTimeout(resolve, 120));
+
+  /** Polls until two reads agree, which is the glide having come to rest. */
+  async function restingPlace(canvas: HTMLElement) {
+    let previous = Number.NaN;
+
+    await waitFor(
+      () => {
+        const now = xOf(canvas);
+        const stopped = now === previous;
+        previous = now;
+        expect(stopped).toBe(true);
+      },
+      { timeout: 4000, interval: 60 },
+    );
+
+    return previous;
+  }
+
+  it('keeps travelling after the pointer has gone', async () => {
     const { stage, canvas } = board();
 
     flick(stage);
     const atRelease = xOf(canvas);
-    vi.advanceTimersByTime(100);
 
     // Stopping dead reads as the gesture being dropped rather than finished.
-    expect(xOf(canvas)).toBeLessThan(atRelease);
+    await waitFor(() => expect(xOf(canvas)).toBeLessThan(atRelease));
   });
 
-  it('settles instead of running forever', () => {
+  it('settles instead of running forever', async () => {
     const { stage, canvas } = board();
 
     flick(stage);
-    vi.advanceTimersByTime(3000);
-    const settled = xOf(canvas);
-    vi.advanceTimersByTime(3000);
+    const rest = await restingPlace(canvas);
+    await aFewFrames();
 
-    expect(xOf(canvas)).toBe(settled);
+    expect(xOf(canvas)).toBe(rest);
   });
 
-  it('does not glide from a press that never moved', () => {
+  it('does not glide from a press that never moved', async () => {
     const { stage, canvas } = board();
 
     fireEvent.pointerDown(stage, { clientX: 600 });
     fireEvent.pointerUp(window);
-    vi.advanceTimersByTime(500);
+    await aFewFrames();
 
-    // A card is under that press and is about to be opened. Nothing may
-    // slide out from under it.
+    // A card is under that press and about to be opened. Nothing may slide
+    // out from under it.
     expect(canvas.style.transform).toBe('');
   });
 
-  it('stops when the board is caught again', () => {
+  it('stops when the board is caught again', async () => {
     const { stage, canvas } = board();
 
     flick(stage);
-    vi.advanceTimersByTime(50);
+    await waitFor(() => expect(xOf(canvas)).toBeLessThan(-160));
+
     fireEvent.pointerDown(stage, { clientX: 400 });
     const caught = xOf(canvas);
-    vi.advanceTimersByTime(500);
+    await aFewFrames();
 
     // Catching a thing that is still travelling stops it.
     expect(xOf(canvas)).toBe(caught);
   });
 
-  it('drops the frame when the stage goes away', () => {
+  it('drops the frame loop when the stage goes away', async () => {
+    // Counting requests, not cancellations: the hook cancels on every press
+    // and at the top of every glide, so a spy on cancel is satisfied whether
+    // or not the cleanup does its job.
+    const raf = vi.spyOn(window, 'requestAnimationFrame');
+
     const view = render(<BoardStage start={at(8)} windowHours={WINDOW} />);
     const stage = view.container.querySelector<HTMLElement>('.stage')!;
     Object.defineProperty(stage, 'clientWidth', { value: 900, configurable: true });
 
     flick(stage);
     view.unmount();
+    const asked = raf.mock.calls.length;
+    await aFewFrames();
 
-    // A frame loop outlives the component that started it.
-    expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
+    // A loop left running keeps asking for frames forever, long after it has
+    // nothing left to write to.
+    expect(raf.mock.calls.length).toBe(asked);
+    raf.mockRestore();
   });
 });
