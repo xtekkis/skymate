@@ -78,6 +78,25 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       frame.current = requestAnimationFrame(step);
     }
 
+    /**
+     * Scrolling over the board moves through time rather than down the page.
+     *
+     * Whichever axis the gesture is mostly on wins: a mouse wheel only has a
+     * y, and a trackpad swipe is mostly x, and both should travel the same
+     * way. Registered natively and not through React because preventDefault
+     * needs a listener that is not passive, and React's onWheel is.
+     */
+    function onWheel(event: WheelEvent) {
+      event.preventDefault();
+
+      cancelAnimationFrame(frame.current);
+      velocity.current = 0;
+
+      const delta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      apply(pan.current - delta);
+    }
+
     function onPointerDown(event: PointerEvent) {
       // Controls sitting on the board are still controls.
       if ((event.target as HTMLElement).closest('button, input, select, a, textarea')) return;
@@ -116,6 +135,7 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       if (wasDrag) glide();
     }
 
+    stage.addEventListener('wheel', onWheel, { passive: false });
     stage.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
@@ -123,6 +143,7 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
 
     return () => {
       cancelAnimationFrame(frame.current);
+      stage.removeEventListener('wheel', onWheel);
       stage.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);

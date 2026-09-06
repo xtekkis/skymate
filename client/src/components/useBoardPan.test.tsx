@@ -127,6 +127,72 @@ describe('what it leaves alone', () => {
   });
 });
 
+describe('scrolling over the board', () => {
+  /** Cancelable and constructed by hand, so defaultPrevented can be read. */
+  function wheel(stage: HTMLElement, deltas: { deltaX?: number; deltaY?: number }) {
+    const event = new WheelEvent('wheel', {
+      deltaX: 0,
+      deltaY: 0,
+      ...deltas,
+      cancelable: true,
+      bubbles: true,
+    });
+    stage.dispatchEvent(event);
+    return event;
+  }
+
+  it('turns a mouse wheel into travel through time', () => {
+    const { stage, canvas } = board();
+
+    wheel(stage, { deltaY: 120 });
+
+    // A wheel only has a y, and the board only moves in x.
+    expect(xOf(canvas)).toBe(-120);
+  });
+
+  it('takes a trackpad swipe on its own axis', () => {
+    const { stage, canvas } = board();
+
+    wheel(stage, { deltaX: 90, deltaY: 12 });
+
+    // Whichever axis the gesture is mostly on is the one that counts.
+    expect(xOf(canvas)).toBe(-90);
+  });
+
+  it('keeps the page from scrolling underneath', () => {
+    const { stage } = board();
+
+    // The board has taken the gesture, so nothing else may act on it. This is
+    // the whole reason the listener is native rather than React's onWheel.
+    expect(wheel(stage, { deltaY: 120 }).defaultPrevented).toBe(true);
+  });
+
+  it('obeys the same ends as a drag', () => {
+    const { stage, canvas } = board();
+
+    wheel(stage, { deltaY: -400 });
+
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('stops a board that is still gliding', async () => {
+    const { stage, canvas } = board();
+
+    fireEvent.pointerDown(stage, { clientX: 700 });
+    fireEvent.pointerMove(window, { clientX: 620 });
+    fireEvent.pointerMove(window, { clientX: 540 });
+    fireEvent.pointerUp(window);
+    await waitFor(() => expect(xOf(canvas)).toBeLessThan(-160));
+
+    wheel(stage, { deltaY: 10 });
+    const caught = xOf(canvas);
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    // Scrolling into a moving board takes it over rather than fighting it.
+    expect(xOf(canvas)).toBe(caught);
+  });
+});
+
 describe('letting go mid sweep', () => {
   /** A flick: two moves, so there is a per-frame delta to carry on with. */
   function flick(stage: HTMLElement) {
