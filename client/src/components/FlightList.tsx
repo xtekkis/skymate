@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 
-import type { Flight, FlightDirection, FlightStatus } from '../models';
+import type { Flight, FlightDirection } from '../models';
+import { STATUS_LABEL, STATUS_TONE, isBoarding } from './flightStatus';
 import './FlightList.css';
 
 gsap.registerPlugin(useGSAP);
@@ -12,36 +13,6 @@ interface FlightListProps {
   flights: Flight[];
   direction: FlightDirection;
 }
-
-const STATUS_LABEL: Record<FlightStatus, string> = {
-  Unknown: 'Unknown',
-  Expected: 'Expected',
-  CheckIn: 'Check in',
-  Boarding: 'Boarding',
-  GateClosed: 'Gate closed',
-  Departed: 'Departed',
-  EnRoute: 'En route',
-  Approaching: 'Approaching',
-  Arrived: 'Arrived',
-  Delayed: 'Delayed',
-  Diverted: 'Diverted',
-  Canceled: 'Cancelled',
-};
-
-const STATUS_TONE: Record<FlightStatus, string> = {
-  Unknown: 'muted',
-  Expected: 'info',
-  CheckIn: 'info',
-  Boarding: 'ok',
-  GateClosed: 'warn',
-  Departed: 'muted',
-  EnRoute: 'muted',
-  Approaching: 'ok',
-  Arrived: 'ok',
-  Delayed: 'warn',
-  Diverted: 'warn',
-  Canceled: 'danger',
-};
 
 /**
  * Reads the wall-clock portion straight off the airport-local string. Parsing
@@ -166,7 +137,7 @@ export default function FlightList({ flights, direction }: FlightListProps) {
                       word is what makes a board scannable at a glance. */}
                   <span
                     className={
-                      flight.status === 'Boarding' ? 'badge__dot badge__dot--live' : 'badge__dot'
+                      isBoarding(flight.status) ? 'badge__dot badge__dot--live' : 'badge__dot'
                     }
                     aria-hidden="true"
                   />
