@@ -1,6 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
-import { GUTTER, PX_PER_MINUTE, clampPan, hhmm, offsetFor, toTicks } from './boardGeometry';
+import {
+  CARD_GAP,
+  CARD_W,
+  GUTTER,
+  LANE_H,
+  MAX_LANES,
+  MIN_LANES,
+  PX_PER_MINUTE,
+  assignLanes,
+  clampPan,
+  hhmm,
+  laneCountFor,
+  laneTop,
+  offsetFor,
+  toTicks,
+} from './boardGeometry';
+
+/**
+ * The obvious alternative, written out so a test can show why it is not the
+ * one used: it fills the first lane that has cleared, and a board of hourly
+ * departures collapses into two rows because lane zero keeps clearing in time.
+ */
+function fillFirstFree(minutes: number[], start: number, lanes: number) {
+  const ends: number[] = new Array(lanes).fill(Number.NEGATIVE_INFINITY);
+
+  return minutes.map((at) => {
+    const left = offsetFor(at, start);
+    let lane = ends.findIndex((end) => end <= left - CARD_GAP);
+
+    if (lane === -1) {
+      lane = ends.length;
+      ends.push(Number.NEGATIVE_INFINITY);
+    }
+
+    ends[lane] = left + CARD_W;
+    return lane;
+  });
+}
 
 const at = (h: number, m = 0) => h * 60 + m;
 
@@ -94,5 +131,82 @@ describe('how far a pan may travel', () => {
     // Both ends collapse onto zero, so there is nowhere to go.
     expect(clampPan(-500, 4000, 900)).toBe(0);
     expect(clampPan(500, 4000, 900)).toBe(0);
+  });
+});
+
+describe('how many rows the stage can show', () => {
+  it('never goes below three, however short the stage', () => {
+    // Two rows on a laptop is a list with extra steps.
+    expect(laneCountFor(200)).toBe(MIN_LANES);
+    expect(laneCountFor(0)).toBe(MIN_LANES);
+  });
+
+  it('never goes above six, however tall', () => {
+    // Past six the eye stops reading rows and starts scanning a wall.
+    expect(laneCountFor(4000)).toBe(MAX_LANES);
+  });
+
+  it('fits as many whole lanes as the space between the ruler and the foot', () => {
+    // 46 for the ruler, 40 for the scrubber, 116 a lane: this holds four.
+    expect(laneCountFor(46 + 40 + LANE_H * 4)).toBe(4);
+    expect(laneCountFor(46 + 40 + LANE_H * 4 - 1)).toBe(3);
+  });
+});
+
+describe('dealing cards into rows', () => {
+  const start = at(8);
+  /** Far enough apart that a lane has cleared by the time it comes round. */
+  const hourly = [at(8), at(9), at(10), at(11), at(12), at(13)];
+
+  it('deals round-robin, so every lane gets used', () => {
+    expect(assignLanes(hourly, start, 3)).toEqual([0, 1, 2, 0, 1, 2]);
+  });
+
+  it('spreads where filling the first free lane would not', () => {
+    // The point of the whole function. A greedy pass over this same input
+    // finds lane 0 clear by the third card and puts it there, and again for
+    // the fifth, so the board uses two rows and the bottom half sits empty.
+    const greedy = fillFirstFree(hourly, start, 3);
+
+    expect(new Set(greedy).size).toBe(2);
+    expect(new Set(assignLanes(hourly, start, 3)).size).toBe(3);
+  });
+
+  it('passes over a lane whose last card is still in the way', () => {
+    // Four departures inside a few minutes, dealt into three lanes: the fourth
+    // cannot go back to lane 0, which is still holding the first.
+    const bunched = [at(8), at(8, 2), at(8, 4), at(8, 6)];
+
+    expect(assignLanes(bunched, start, 3)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('adds a row when every lane is occupied', () => {
+    const bunched = [at(8), at(8, 1), at(8, 2), at(8, 3), at(8, 4)];
+    const lanes = assignLanes(bunched, start, 3);
+
+    // Beyond the target, which is what gives the stage something to scroll to.
+    expect(Math.max(...lanes)).toBeGreaterThan(2);
+  });
+
+  it('gives every card a lane, and never a negative one', () => {
+    const lanes = assignLanes(hourly, start, 3);
+
+    expect(lanes).toHaveLength(hourly.length);
+    expect(lanes.every((lane) => Number.isInteger(lane) && lane >= 0)).toBe(true);
+  });
+
+  it('has nothing to say about an empty board', () => {
+    expect(assignLanes([], start, 3)).toEqual([]);
+  });
+
+  it('survives being asked for no lanes at all', () => {
+    expect(assignLanes(hourly, start, 0).every((lane) => lane >= 0)).toBe(true);
+  });
+});
+
+describe('where a lane sits', () => {
+  it('stacks by the lane height, below the gutter', () => {
+    expect(laneTop(0)).toBe(GUTTER);
+    expect(laneTop(2) - laneTop(1)).toBe(LANE_H);
   });
 });

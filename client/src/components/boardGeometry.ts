@@ -66,6 +66,65 @@ export function toTicks(start: number, windowHours: number): Tick[] {
   return ticks;
 }
 
+/** Clear space a card needs before it, or the one before is still in the way. */
+export const CARD_GAP = 12;
+
+/** Room kept at the foot of the stage, where the scrubber sits. */
+export const FOOT = 40;
+
+/** Fewer than three rows is a list; more than six is a wall. */
+export const MIN_LANES = 3;
+export const MAX_LANES = 6;
+
+/** How many rows the stage can show without having to be scrolled. */
+export function laneCountFor(stageHeight: number) {
+  const usable = stageHeight - RULER_H - FOOT;
+  return Math.max(MIN_LANES, Math.min(MAX_LANES, Math.floor(usable / LANE_H)));
+}
+
+/**
+ * Which row each card goes in.
+ *
+ * Dealt round-robin rather than into the first lane that happens to be free.
+ * Greedy packing is the obvious way and it is wrong here: cards are wider than
+ * the gap between departures, so the first lane clears just in time to take
+ * the next one, and a full board collapses into two or three rows with the
+ * bottom half of the screen empty.
+ *
+ * Round-robin spreads them, and only reaches for another lane when the one it
+ * was dealt is genuinely still occupied. If every lane is, a new one is added
+ * and the stage gains something to scroll to.
+ */
+export function assignLanes(minutes: number[], start: number, lanes: number) {
+  const target = Math.max(1, lanes);
+  /** How far right each lane is committed to, so far. */
+  const ends: number[] = new Array(target).fill(Number.NEGATIVE_INFINITY);
+
+  return minutes.map((at, index) => {
+    const left = offsetFor(at, start);
+    let lane = index % target;
+
+    if (ends[lane] > left - CARD_GAP) {
+      const free = ends.findIndex((end) => end <= left - CARD_GAP);
+
+      if (free === -1) {
+        lane = ends.length;
+        ends.push(Number.NEGATIVE_INFINITY);
+      } else {
+        lane = free;
+      }
+    }
+
+    ends[lane] = left + CARD_W;
+    return lane;
+  });
+}
+
+/** The top of a lane, in pixels down the canvas. */
+export function laneTop(lane: number) {
+  return lane * LANE_H + GUTTER;
+}
+
 /**
  * Where a pan is allowed to sit.
  *
