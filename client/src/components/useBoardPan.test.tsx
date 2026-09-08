@@ -101,17 +101,95 @@ describe('where it is allowed to go', () => {
   });
 });
 
-describe('what it leaves alone', () => {
-  it('does not start a drag from a control sitting on the board', () => {
-    const { stage, canvas, card } = board();
+describe('grabbing the board by a card', () => {
+  /** A stage carrying a card and something that has opted out of panning. */
+  function withCard(viewport = 900) {
+    const onCardClick = vi.fn();
+
+    const view = render(
+      <BoardStage start={at(8)} windowHours={WINDOW}>
+        <button type="button" onClick={onCardClick}>
+          a card
+        </button>
+        <div data-no-pan>
+          <button type="button">the scrubber</button>
+        </div>
+      </BoardStage>,
+    );
+
+    const stage = view.container.querySelector<HTMLElement>('.stage')!;
+    Object.defineProperty(stage, 'clientWidth', { value: viewport, configurable: true });
+
+    return {
+      stage,
+      canvas: view.container.querySelector<HTMLElement>('.stage__canvas')!,
+      card: view.getByRole('button', { name: 'a card' }),
+      optedOut: view.getByRole('button', { name: 'the scrubber' }),
+      onCardClick,
+    };
+  }
+
+  it('drags from a card, because cards cover the board', () => {
+    const { stage, canvas, card } = withCard();
 
     fireEvent.pointerDown(card, { clientX: 600 });
-    fireEvent.pointerMove(window, { clientX: 300 });
+    fireEvent.pointerMove(window, { clientX: 400 });
 
-    // A card is a button. Pressing one must not drag the board out from under
-    // the press.
-    expect(canvas.style.transform).toBe('');
+    // Every card is a button. Refusing to drag from one leaves almost nowhere
+    // on the board to grab.
+    expect(xOf(canvas)).toBe(-200);
     expect(stage).toBeTruthy();
+  });
+
+  it('does not drag from something that has opted out', () => {
+    const { canvas, optedOut } = withCard();
+
+    fireEvent.pointerDown(optedOut, { clientX: 600 });
+    fireEvent.pointerMove(window, { clientX: 400 });
+
+    expect(canvas.style.transform).toBe('');
+  });
+
+  it('does not open a card that was only dragged across', () => {
+    const { card, onCardClick } = withCard();
+
+    fireEvent.pointerDown(card, { clientX: 600 });
+    fireEvent.pointerMove(window, { clientX: 400 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(card);
+
+    // The release produces a click, and without swallowing it every sweep
+    // across the board would open whatever it ended on.
+    expect(onCardClick).not.toHaveBeenCalled();
+  });
+
+  it('still opens a card that was pressed rather than dragged', () => {
+    const { card, onCardClick } = withCard();
+
+    fireEvent.pointerDown(card, { clientX: 600 });
+    fireEvent.pointerMove(window, { clientX: 602 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(card);
+
+    // Two pixels is a press with a shaky hand, not a drag.
+    expect(onCardClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows one click and not the next one', () => {
+    const { card, onCardClick } = withCard();
+
+    fireEvent.pointerDown(card, { clientX: 600 });
+    fireEvent.pointerMove(window, { clientX: 400 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(card);
+
+    fireEvent.pointerDown(card, { clientX: 400 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(card);
+
+    // A drag that ends off the board produces no click at all, and a listener
+    // left waiting for one would eat the next real press instead.
+    expect(onCardClick).toHaveBeenCalledTimes(1);
   });
 
   it('stops listening once the stage goes away', () => {
@@ -121,8 +199,6 @@ describe('what it leaves alone', () => {
     fireEvent.pointerDown(stage, { clientX: 600 });
     view.unmount();
 
-    // A window listener outlives the component that added it, and this one
-    // writes to a node that is no longer in the document.
     expect(() => fireEvent.pointerMove(window, { clientX: 100 })).not.toThrow();
   });
 });

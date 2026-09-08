@@ -97,9 +97,28 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       apply(pan.current - delta);
     }
 
+    /**
+     * Eats the click a drag is about to produce.
+     *
+     * Capturing and one-shot, so it lands before the card underneath ever
+     * hears about it. Removed again on the next press, in case the release
+     * happened somewhere that produced no click at all and it is still there.
+     */
+    function swallow(event: MouseEvent) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
     function onPointerDown(event: PointerEvent) {
-      // Controls sitting on the board are still controls.
-      if ((event.target as HTMLElement).closest('button, input, select, a, textarea')) return;
+      /*
+       * Cards are buttons and they cover most of the board, so a button has to
+       * be draggable through or there is nowhere left to grab. What is opted
+       * out is named explicitly, plus the controls that own a drag of their
+       * own: a slider, a select, text being selected in a field.
+       */
+      if ((event.target as HTMLElement).closest('[data-no-pan], input, select, textarea')) return;
+
+      stage!.removeEventListener('click', swallow, { capture: true });
 
       // Catching a board that is still travelling stops it, the way catching
       // a spinning thing does.
@@ -132,7 +151,10 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
 
       // A press that never moved is a press, and a card underneath it is
       // about to be opened. Nothing should slide out from under it.
-      if (wasDrag) glide();
+      if (!wasDrag) return;
+
+      stage!.addEventListener('click', swallow, { capture: true, once: true });
+      glide();
     }
 
     stage.addEventListener('wheel', onWheel, { passive: false });
@@ -143,6 +165,7 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
 
     return () => {
       cancelAnimationFrame(frame.current);
+      stage.removeEventListener('click', swallow, { capture: true });
       stage.removeEventListener('wheel', onWheel);
       stage.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
