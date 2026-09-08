@@ -3,7 +3,15 @@ import { useCallback, useState } from 'react';
 import type { Flight } from '../models';
 import BoardStage from './BoardStage';
 import FlightCard from './FlightCard';
-import { CARD_W, assignLanes, laneCountFor, laneTop, minutesOfLocal, offsetFor } from './boardGeometry';
+import {
+  CARD_W,
+  assignLanes,
+  contentHeight,
+  laneCountFor,
+  laneTop,
+  minutesOfLocal,
+  offsetFor,
+} from './boardGeometry';
 
 interface FlightBoardProps {
   /** In scheduled order, which is the order the server already returns. */
@@ -37,8 +45,17 @@ export default function FlightBoard({
   const minutes = flights.map((flight) => minutesOfLocal(flight.scheduledLocal));
   const lanes = assignLanes(minutes, start, laneCountFor(stageHeight));
 
+  // Taller than the stage only once the lanes have overflowed their target,
+  // which is exactly when there is somewhere to travel down to.
+  const used = lanes.length > 0 ? Math.max(...lanes) + 1 : 0;
+
   return (
-    <BoardStage start={start} windowHours={windowHours} onHeight={onHeight}>
+    <BoardStage
+      start={start}
+      windowHours={windowHours}
+      contentHeight={contentHeight(used)}
+      onHeight={onHeight}
+    >
       {flights.map((flight, index) => (
         <FlightCard
           key={flight.id}

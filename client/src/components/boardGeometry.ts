@@ -156,6 +156,16 @@ export function clampPan(value: number, viewport: number, content: number) {
   return Math.max(furthest, Math.min(0, value));
 }
 
+/**
+ * How tall the canvas has to be to hold every lane.
+ *
+ * More than the stage only once the board has overflowed its target rows,
+ * which is exactly when there is somewhere to travel down to.
+ */
+export function contentHeight(laneCount: number) {
+  return Math.max(0, laneCount) * LANE_H + GUTTER + FOOT;
+}
+
 /** How wide the canvas has to be to hold the whole window, plus the last card. */
 export function contentWidth(windowHours: number) {
   return windowHours * 60 * PX_PER_MINUTE + CARD_W + GUTTER * 5;

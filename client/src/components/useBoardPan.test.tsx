@@ -2,7 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import BoardStage from './BoardStage';
-import { contentWidth } from './boardGeometry';
+import { RULER_H, contentWidth } from './boardGeometry';
 
 const at = (h: number, m = 0) => h * 60 + m;
 const WINDOW = 4;
@@ -29,6 +29,10 @@ function board(viewport = 900) {
 /** The x out of a translate3d, as a number. */
 const xOf = (el: HTMLElement) => Number(/translate3d\((-?[\d.]+)px/.exec(el.style.transform)?.[1]);
 
+/** And the y, which for the ruler must never be anything but zero. */
+const yOf = (el: HTMLElement) =>
+  Number(/translate3d\(-?[\d.]+px,\s*(-?[\d.]+)(?:px)?/.exec(el.style.transform)?.[1]);
+
 function drag(stage: HTMLElement, from: number, to: number) {
   fireEvent.pointerDown(stage, { clientX: from });
   fireEvent.pointerMove(window, { clientX: to });
@@ -43,13 +47,13 @@ describe('dragging the board', () => {
     expect(xOf(canvas)).toBe(-200);
   });
 
-  it('carries the ruler along with it', () => {
+  it('carries the ruler sideways with it', () => {
     const { stage, canvas, ruler } = board();
 
     drag(stage, 600, 450);
 
     // The hours have to stay over the cards they are labelling.
-    expect(ruler.style.transform).toBe(canvas.style.transform);
+    expect(xOf(ruler)).toBe(xOf(canvas));
   });
 
   it('continues from where the last drag left off', () => {
@@ -98,6 +102,82 @@ describe('where it is allowed to go', () => {
     drag(stage, 600, 100);
 
     expect(xOf(canvas)).toBe(0);
+  });
+});
+
+describe('travelling down the lanes', () => {
+  const TALL = 2000;
+
+  /** A stage with more card below it than fits, so there is somewhere to go. */
+  function overflowing(viewportHeight = 600) {
+    const view = render(
+      <BoardStage start={at(8)} windowHours={WINDOW} contentHeight={TALL}>
+        <button type="button">a card</button>
+      </BoardStage>,
+    );
+
+    const stage = view.container.querySelector<HTMLElement>('.stage')!;
+    Object.defineProperty(stage, 'clientWidth', { value: 900, configurable: true });
+    Object.defineProperty(stage, 'clientHeight', { value: viewportHeight, configurable: true });
+
+    return {
+      stage,
+      canvas: view.container.querySelector<HTMLElement>('.stage__canvas')!,
+      ruler: view.container.querySelector<HTMLElement>('.stage__rulerInner')!,
+    };
+  }
+
+  /** Drag with both axes, since a real hand never moves on one alone. */
+  function dragTo(stage: HTMLElement, from: [number, number], to: [number, number]) {
+    fireEvent.pointerDown(stage, { clientX: from[0], clientY: from[1] });
+    fireEvent.pointerMove(window, { clientX: to[0], clientY: to[1] });
+  }
+
+  it('pulls the lower lanes into view', () => {
+    const { stage, canvas } = overflowing();
+
+    dragTo(stage, [600, 500], [600, 300]);
+
+    // Cards past the rows that fit are placed and reachable rather than
+    // stranded off the bottom of a board that only moves sideways.
+    expect(yOf(canvas)).toBe(-200);
+  });
+
+  it('will not pull the first lane down past the ruler', () => {
+    const { stage, canvas } = overflowing();
+
+    dragTo(stage, [600, 300], [600, 700]);
+
+    expect(yOf(canvas)).toBe(0);
+  });
+
+  it('stops at the last lane rather than into empty space', () => {
+    const viewportHeight = 600;
+    const { stage, canvas } = overflowing(viewportHeight);
+
+    dragTo(stage, [600, 5000], [600, 0]);
+
+    // What is left once the ruler and the visible rows have taken their share.
+    expect(yOf(canvas)).toBe(viewportHeight - RULER_H - TALL);
+  });
+
+  it('leaves the ruler exactly where it is', () => {
+    const { stage, ruler } = overflowing();
+
+    dragTo(stage, [600, 500], [500, 300]);
+
+    // It slides sideways with the cards and never up or down with them, or
+    // the clock leaves the top of the stage.
+    expect(yOf(ruler)).toBe(0);
+    expect(xOf(ruler)).toBe(-100);
+  });
+
+  it('does not move vertically when the lanes already fit', () => {
+    const { stage, canvas } = board();
+
+    dragTo(stage, [600, 500], [600, 200]);
+
+    expect(yOf(canvas)).toBe(0);
   });
 });
 

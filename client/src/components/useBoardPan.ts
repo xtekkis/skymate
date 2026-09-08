@@ -1,13 +1,15 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-import { clampPan } from './boardGeometry';
+import { RULER_H, clampPan } from './boardGeometry';
 
 interface BoardPanOptions {
   stageRef: RefObject<HTMLElement | null>;
   canvasRef: RefObject<HTMLElement | null>;
   rulerRef: RefObject<HTMLElement | null>;
-  /** How wide the canvas is, which is how far there is to travel. */
+  /** How wide the canvas is, which is how far there is to travel sideways. */
   contentWidth: number;
+  /** And how tall, which is only more than the stage once lanes overflow. */
+  contentHeight: number;
 }
 
 /** Past this, a pointer was dragging the board rather than clicking a card. */
@@ -31,31 +33,52 @@ export const MIN_VELOCITY = 0.25;
  * Returns a ref reporting whether the last gesture actually moved, so a card
  * can tell a click from the end of a drag across it.
  */
-export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: BoardPanOptions) {
-  const pan = useRef(0);
-  const drag = useRef<{ x: number; from: number } | null>(null);
+export function useBoardPan({
+  stageRef,
+  canvasRef,
+  rulerRef,
+  contentWidth,
+  contentHeight,
+}: BoardPanOptions) {
+  const pan = useRef({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number; fromX: number; fromY: number } | null>(null);
   const moved = useRef(false);
-  const velocity = useRef(0);
+  const velocity = useRef({ x: 0, y: 0 });
   const frame = useRef(0);
 
   // Read inside the listeners rather than captured, so a window change does
   // not need the listeners torn down and rebuilt.
-  const width = useRef(contentWidth);
-  width.current = contentWidth;
+  const size = useRef({ width: contentWidth, height: contentHeight });
+  size.current = { width: contentWidth, height: contentHeight };
 
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
 
-    function apply(next: number) {
-      const view = stageRef.current?.clientWidth ?? 0;
-      pan.current = clampPan(next, view, width.current);
+    function apply(nextX: number, nextY: number) {
+      const stageEl = stageRef.current;
+      const viewW = stageEl?.clientWidth ?? 0;
+      // The ruler owns the top of the stage, so the cards travel in what is
+      // left below it.
+      // Never negative: a stage shorter than its own ruler would otherwise
+      // report room to travel that does not exist.
+      const viewH = Math.max(0, (stageEl?.clientHeight ?? 0) - RULER_H);
 
-      const offset = `translate3d(${pan.current}px, 0, 0)`;
-      if (canvasRef.current) canvasRef.current.style.transform = offset;
-      // The ruler takes the x and nothing else: it slides with the cards but
-      // stays pinned to the top of the stage.
-      if (rulerRef.current) rulerRef.current.style.transform = offset;
+      pan.current = {
+        x: clampPan(nextX, viewW, size.current.width),
+        y: clampPan(nextY, viewH, size.current.height),
+      };
+
+      if (canvasRef.current) {
+        canvasRef.current.style.transform = `translate3d(${pan.current.x}px, ${pan.current.y}px, 0)`;
+      }
+
+      // The ruler takes the x and nothing else. It slides with the cards and
+      // stays pinned to the top, so the clock stays readable whatever row is
+      // being pushed around underneath it.
+      if (rulerRef.current) {
+        rulerRef.current.style.transform = `translate3d(${pan.current.x}px, 0, 0)`;
+      }
     }
 
     /**
@@ -68,10 +91,14 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       cancelAnimationFrame(frame.current);
 
       const step = () => {
-        velocity.current *= DECAY;
-        if (Math.abs(velocity.current) < MIN_VELOCITY) return;
+        velocity.current = { x: velocity.current.x * DECAY, y: velocity.current.y * DECAY };
 
-        apply(pan.current + velocity.current);
+        const spent =
+          Math.abs(velocity.current.x) < MIN_VELOCITY &&
+          Math.abs(velocity.current.y) < MIN_VELOCITY;
+        if (spent) return;
+
+        apply(pan.current.x + velocity.current.x, pan.current.y + velocity.current.y);
         frame.current = requestAnimationFrame(step);
       };
 
@@ -90,11 +117,11 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       event.preventDefault();
 
       cancelAnimationFrame(frame.current);
-      velocity.current = 0;
+      velocity.current = { x: 0, y: 0 };
 
       const delta =
         Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-      apply(pan.current - delta);
+      apply(pan.current.x - delta, pan.current.y);
     }
 
     /**
@@ -123,9 +150,14 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       // Catching a board that is still travelling stops it, the way catching
       // a spinning thing does.
       cancelAnimationFrame(frame.current);
-      velocity.current = 0;
+      velocity.current = { x: 0, y: 0 };
 
-      drag.current = { x: event.clientX, from: pan.current };
+      drag.current = {
+        x: event.clientX,
+        y: event.clientY,
+        fromX: pan.current.x,
+        fromY: pan.current.y,
+      };
       moved.current = false;
       stage!.style.cursor = 'grabbing';
     }
@@ -134,12 +166,15 @@ export function useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth }: Boa
       if (!drag.current) return;
 
       const dx = event.clientX - drag.current.x;
-      if (Math.abs(dx) > DRAG_SLOP) moved.current = true;
+      const dy = event.clientY - drag.current.y;
+      if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) moved.current = true;
 
-      const next = drag.current.from + dx;
+      const nextX = drag.current.fromX + dx;
+      const nextY = drag.current.fromY + dy;
+
       // How far this move asked to travel, which is what carries on afterwards.
-      velocity.current = next - pan.current;
-      apply(next);
+      velocity.current = { x: nextX - pan.current.x, y: nextY - pan.current.y };
+      apply(nextX, nextY);
     }
 
     function onPointerUp() {

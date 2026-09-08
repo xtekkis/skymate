@@ -8,6 +8,8 @@ interface BoardStageProps {
   /** Window start, in minutes since local midnight. */
   start: number;
   windowHours: number;
+  /** How far the cards reach down. Unset, there is nowhere to travel to. */
+  contentHeight?: number;
   /** The cards. Absolutely positioned against the canvas by the caller. */
   children?: ReactNode;
   /**
@@ -29,7 +31,13 @@ interface BoardStageProps {
  * sideways with the canvas but never up and down with it, which is what keeps
  * the clock readable while you are pushing rows around underneath.
  */
-export default function BoardStage({ start, windowHours, children, onHeight }: BoardStageProps) {
+export default function BoardStage({
+  start,
+  windowHours,
+  contentHeight = 0,
+  children,
+  onHeight,
+}: BoardStageProps) {
   const ticks = toTicks(start, windowHours);
   const width = contentWidth(windowHours);
 
@@ -37,7 +45,7 @@ export default function BoardStage({ start, windowHours, children, onHeight }: B
   const canvasRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
 
-  useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth: width });
+  useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth: width, contentHeight });
 
   useEffect(() => {
     if (!onHeight) return;
@@ -65,7 +73,11 @@ export default function BoardStage({ start, windowHours, children, onHeight }: B
         </div>
       </div>
 
-      <div className="stage__canvas" ref={canvasRef} style={{ width }}>
+      <div
+        className="stage__canvas"
+        ref={canvasRef}
+        style={{ width, height: contentHeight || undefined }}
+      >
         {children}
       </div>
     </section>
