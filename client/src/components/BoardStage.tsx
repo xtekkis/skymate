@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import { contentWidth, toTicks } from './boardGeometry';
 import { useBoardPan } from './useBoardPan';
@@ -10,6 +10,15 @@ interface BoardStageProps {
   windowHours: number;
   /** The cards. Absolutely positioned against the canvas by the caller. */
   children?: ReactNode;
+  /**
+   * How tall the stage is, whenever that changes.
+   *
+   * The board needs it to work out how many lanes fit, and only the stage
+   * knows. Reported on a resize listener rather than watched with an observer,
+   * because the pan geometry has to be recomputed on resize anyway and one
+   * source of truth is simpler than two.
+   */
+  onHeight?: (height: number) => void;
 }
 
 /**
@@ -20,7 +29,7 @@ interface BoardStageProps {
  * sideways with the canvas but never up and down with it, which is what keeps
  * the clock readable while you are pushing rows around underneath.
  */
-export default function BoardStage({ start, windowHours, children }: BoardStageProps) {
+export default function BoardStage({ start, windowHours, children, onHeight }: BoardStageProps) {
   const ticks = toTicks(start, windowHours);
   const width = contentWidth(windowHours);
 
@@ -29,6 +38,16 @@ export default function BoardStage({ start, windowHours, children }: BoardStageP
   const rulerRef = useRef<HTMLDivElement>(null);
 
   useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth: width });
+
+  useEffect(() => {
+    if (!onHeight) return;
+
+    const report = () => onHeight(stageRef.current?.clientHeight ?? 0);
+
+    report();
+    window.addEventListener('resize', report);
+    return () => window.removeEventListener('resize', report);
+  }, [onHeight]);
 
   return (
     <section className="stage" ref={stageRef} aria-label="Flight timeline">

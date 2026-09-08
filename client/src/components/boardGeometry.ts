@@ -66,6 +66,25 @@ export function toTicks(start: number, windowHours: number): Tick[] {
   return ticks;
 }
 
+/**
+ * The wall clock minute an airport-local string names.
+ *
+ * Sliced, never parsed. "2026-09-04T08:45+01:00" is a quarter to nine at the
+ * airport, and turning it into a Date would make it a different time for every
+ * reader. A flight with no scheduled time cannot be placed on a time axis at
+ * all; the server drops those before they reach us, so this puts anything that
+ * slipped through at the start of the window rather than at NaN.
+ */
+export function minutesOfLocal(iso?: string) {
+  if (!iso || iso.length < 16) return 0;
+
+  const hours = Number(iso.slice(11, 13));
+  const minutes = Number(iso.slice(14, 16));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
+
+  return hours * 60 + minutes;
+}
+
 /** Clear space a card needs before it, or the one before is still in the way. */
 export const CARD_GAP = 12;
 

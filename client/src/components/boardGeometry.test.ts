@@ -13,6 +13,7 @@ import {
   hhmm,
   laneCountFor,
   laneTop,
+  minutesOfLocal,
   offsetFor,
   toTicks,
 } from './boardGeometry';
@@ -208,5 +209,31 @@ describe('where a lane sits', () => {
   it('stacks by the lane height, below the gutter', () => {
     expect(laneTop(0)).toBe(GUTTER);
     expect(laneTop(2) - laneTop(1)).toBe(LANE_H);
+  });
+});
+
+describe('reading a minute off an airport-local string', () => {
+  it('takes the wall clock as written', () => {
+    expect(minutesOfLocal('2026-09-04T08:45+01:00')).toBe(at(8, 45));
+    expect(minutesOfLocal('2026-09-04T00:05-04:00')).toBe(5);
+  });
+
+  it('ignores the offset entirely', () => {
+    // Same wall clock, three different zones, one position on the axis.
+    const tokyo = minutesOfLocal('2026-09-04T08:45+09:00');
+    const london = minutesOfLocal('2026-09-04T08:45+01:00');
+    const utc = minutesOfLocal('2026-09-04T08:45Z');
+
+    expect(tokyo).toBe(london);
+    expect(london).toBe(utc);
+  });
+
+  it('puts anything unreadable at the start of the window', () => {
+    // The server drops movements with no scheduled time, so this is a guard
+    // rather than a case: a card at NaN pixels vanishes without a trace.
+    expect(minutesOfLocal(undefined)).toBe(0);
+    expect(minutesOfLocal('')).toBe(0);
+    expect(minutesOfLocal('nonsense')).toBe(0);
+    expect(minutesOfLocal('2026-09-04Txx:yy+01:00')).toBe(0);
   });
 });
