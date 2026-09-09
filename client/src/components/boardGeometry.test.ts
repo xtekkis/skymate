@@ -14,8 +14,10 @@ import {
   laneCountFor,
   laneTop,
   minutesOfLocal,
+  nowOffset,
   offsetFor,
   toTicks,
+  todayLocal,
 } from './boardGeometry';
 
 /**
@@ -235,5 +237,44 @@ describe('reading a minute off an airport-local string', () => {
     expect(minutesOfLocal('')).toBe(0);
     expect(minutesOfLocal('nonsense')).toBe(0);
     expect(minutesOfLocal('2026-09-04Txx:yy+01:00')).toBe(0);
+  });
+});
+
+describe('today, where the reader is', () => {
+  it('writes the date the way the date input does', () => {
+    expect(todayLocal(new Date('2026-09-09T21:30:00'))).toBe('2026-09-09');
+    expect(todayLocal(new Date('2026-01-05T00:10:00'))).toBe('2026-01-05');
+  });
+});
+
+describe('where the present moment falls', () => {
+  const inside = new Date('2026-09-09T09:30:00');
+
+  it('is somewhere on a board showing today', () => {
+    const left = nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: inside });
+
+    expect(left).toBe(offsetFor(at(9, 30), at(8)));
+  });
+
+  it('is nowhere on a board showing another day', () => {
+    // Tomorrow has no now on it.
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-10', now: inside })).toBeNull();
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-08', now: inside })).toBeNull();
+  });
+
+  it('is nowhere before the window opens or after it closes', () => {
+    const early = new Date('2026-09-09T06:00:00');
+    const late = new Date('2026-09-09T23:30:00');
+
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: early })).toBeNull();
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: late })).toBeNull();
+  });
+
+  it('counts both ends of the window as inside it', () => {
+    const opening = new Date('2026-09-09T08:00:00');
+    const closing = new Date('2026-09-09T12:00:00');
+
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: opening })).toBe(GUTTER);
+    expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: closing })).not.toBeNull();
   });
 });

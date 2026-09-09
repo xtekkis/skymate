@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 
@@ -13,7 +13,9 @@ import {
   laneTop,
   minutesOfLocal,
   offsetFor,
+  nowOffset,
 } from './boardGeometry';
+import './FlightBoard.css';
 
 gsap.registerPlugin(useGSAP);
 
@@ -32,9 +34,20 @@ const STEP_S = 0.022;
  */
 const STAGGER_CAP_S = 0.32;
 
+/**
+ * How often the now line catches up with the clock.
+ *
+ * At the board scale thirty seconds is under two pixels, so it creeps
+ * rather than jumps, and a board left open does not quietly start lying
+ * about where the present is.
+ */
+const NOW_TICK_MS = 30_000;
+
 interface FlightBoardProps {
   /** In scheduled order, which is the order the server already returns. */
   flights: Flight[];
+  /** The board's date, YYYY-MM-DD. Decides whether there is a now to draw. */
+  date: string;
   /** Window start, in minutes since local midnight. */
   start: number;
   windowHours: number;
@@ -51,12 +64,19 @@ interface FlightBoardProps {
  */
 export default function FlightBoard({
   flights,
+  date,
   start,
   windowHours,
   selectedId = null,
   onOpen,
 }: FlightBoardProps) {
   const [stageHeight, setStageHeight] = useState(0);
+  const [minute, setMinute] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setMinute(Date.now()), NOW_TICK_MS);
+    return () => window.clearInterval(timer);
+  }, []);
 
   /**
    * Cards arrive rather than appear, the way a board fills in.
@@ -95,6 +115,7 @@ export default function FlightBoard({
   // Taller than the stage only once the lanes have overflowed their target,
   // which is exactly when there is somewhere to travel down to.
   const used = lanes.length > 0 ? Math.max(...lanes) + 1 : 0;
+  const now = nowOffset({ start, windowHours, date, now: new Date(minute) });
 
   return (
     <BoardStage
@@ -103,6 +124,12 @@ export default function FlightBoard({
       contentHeight={contentHeight(used)}
       onHeight={onHeight}
     >
+      {now !== null && (
+        <div className="now" style={{ left: now }}>
+          <span className="now__label">Now</span>
+        </div>
+      )}
+
       {flights.map((flight, index) => (
         <FlightCard
           key={flight.id}

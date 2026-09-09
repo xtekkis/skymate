@@ -1,0 +1,32 @@
+/*
+ * The present moment, drawn down the board.
+ *
+ * The accent, spent here on the only mark that is not a flight. It sits on the
+ * canvas rather than on the stage, so it travels with the cards it is dividing
+ * rather than staying put while they slide past it.
+ */
+.now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  /* Strongest at the ruler and fading down: a divider, not a wall. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--accent) 70%, transparent),
+    color-mix(in oklch, var(--accent) 5%, transparent)
+  );
+  pointer-events: none;
+}
+
+.now__label {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+}

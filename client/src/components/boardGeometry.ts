@@ -85,6 +85,42 @@ export function minutesOfLocal(iso?: string) {
   return hours * 60 + minutes;
 }
 
+/** Today where the reader is, as the date input writes it. */
+export function todayLocal(now = new Date()) {
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Where the present moment falls on the axis, or null when it is not on
+ * this board at all.
+ *
+ * A board showing tomorrow has no now on it, and neither does one showing a
+ * window that has already closed. Drawing the line anyway, parked off the
+ * edge at some large negative number, is how it ends up half visible on a
+ * board it has nothing to say about.
+ */
+export function nowOffset({
+  start,
+  windowHours,
+  date,
+  now = new Date(),
+}: {
+  start: number;
+  windowHours: number;
+  /** The board own date, YYYY-MM-DD, as the date input writes it. */
+  date: string;
+  now?: Date;
+}) {
+  if (date !== todayLocal(now)) return null;
+
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (minutes < start || minutes > start + windowHours * 60) return null;
+
+  return offsetFor(minutes, start);
+}
+
 /** Clear space a card needs before it, or the one before is still in the way. */
 export const CARD_GAP = 12;
 

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FlightBoard from './FlightBoard';
 import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from './boardGeometry';
@@ -56,6 +56,7 @@ function board(flights = hourly, selectedId: string | null = null) {
   render(
     <FlightBoard
       flights={flights}
+      date="2026-09-04"
       start={at(8)}
       windowHours={4}
       selectedId={selectedId}
@@ -195,5 +196,70 @@ describe('the cards arriving', () => {
       expect(card.style.opacity).toBe('');
       expect(card.style.transform).toBe('');
     }
+  });
+});
+
+describe('the present moment', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const nowLine = () => document.querySelector<HTMLElement>('.now');
+
+  function boardOn(date: string, clock: string) {
+    vi.setSystemTime(new Date(clock));
+    render(
+      <FlightBoard
+        flights={[]}
+        date={date}
+        start={at(8)}
+        windowHours={4}
+        onOpen={vi.fn()}
+      />,
+    );
+  }
+
+  it('draws a line at the minute it is', () => {
+    boardOn('2026-09-09', '2026-09-09T09:30:00');
+
+    expect(nowLine()).toBeTruthy();
+    expect(nowLine()!.style.left).toBe(`${Math.round(90 * PX_PER_MINUTE) + GUTTER}px`);
+  });
+
+  it('says what the line is', () => {
+    boardOn('2026-09-09', '2026-09-09T09:30:00');
+
+    expect(screen.getByText('Now')).toBeTruthy();
+  });
+
+  it('draws nothing on a board showing another day', () => {
+    boardOn('2026-09-10', '2026-09-09T09:30:00');
+
+    // A board showing tomorrow has no present on it.
+    expect(nowLine()).toBeNull();
+  });
+
+  it('draws nothing once the window has closed', () => {
+    boardOn('2026-09-09', '2026-09-09T23:30:00');
+
+    // Parked off the edge at some large negative number is how a line ends
+    // up half visible on a board it has nothing to say about.
+    expect(nowLine()).toBeNull();
+  });
+
+  it('keeps up with the clock on its own', () => {
+    boardOn('2026-09-09', '2026-09-09T09:30:00');
+    const before = nowLine()!.style.left;
+
+    act(() => {
+      vi.advanceTimersByTime(5 * 60_000);
+    });
+
+    // A board left open must not quietly start lying about where now is.
+    expect(nowLine()!.style.left).not.toBe(before);
   });
 });
