@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 
 import type { Flight } from '../models';
 import BoardStage from './BoardStage';
@@ -12,6 +14,23 @@ import {
   minutesOfLocal,
   offsetFor,
 } from './boardGeometry';
+
+gsap.registerPlugin(useGSAP);
+
+/** Long enough to read as arriving, short enough not to be waited on. */
+const ARRIVE_S = 0.32;
+
+/** Between one card and the next, up to the cap below. */
+const STEP_S = 0.022;
+
+/**
+ * Where the stagger stops accumulating.
+ *
+ * A busy board is forty cards. Left to add up, the last of them would begin
+ * arriving almost a second after the first, and the board would feel slow to
+ * load rather than pleased to see you.
+ */
+const STAGGER_CAP_S = 0.32;
 
 interface FlightBoardProps {
   /** In scheduled order, which is the order the server already returns. */
@@ -38,6 +57,34 @@ export default function FlightBoard({
   onOpen,
 }: FlightBoardProps) {
   const [stageHeight, setStageHeight] = useState(0);
+
+  /**
+   * Cards arrive rather than appear, the way a board fills in.
+   *
+   * from() rather than fromTo(): the start state is the one GSAP invents, so
+   * a board whose animation never runs is a board that is simply visible.
+   * clearProps takes back only opacity and transform, leaving the left and
+   * top this component put there.
+   */
+  useGSAP(
+    () => {
+      const media = gsap.matchMedia();
+
+      media.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.from('.stage__canvas .card', {
+          opacity: 0,
+          y: 10,
+          duration: ARRIVE_S,
+          ease: 'power2.out',
+          stagger: (index: number) => Math.min(STAGGER_CAP_S, index * STEP_S),
+          clearProps: 'opacity,transform',
+        });
+      });
+
+      return () => media.revert();
+    },
+    { dependencies: [flights], revertOnUpdate: true },
+  );
 
   // Stable, or the stage would tear its resize listener down on every render.
   const onHeight = useCallback((height: number) => setStageHeight(height), []);

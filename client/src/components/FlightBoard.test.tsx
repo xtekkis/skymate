@@ -1,11 +1,33 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import FlightBoard from './FlightBoard';
 import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from './boardGeometry';
 import type { Flight } from '../models';
 
+/** jsdom answers no media query, so a test that wants motion has to say so. */
+function allowMotion(allowed: boolean) {
+  window.matchMedia = ((query: string) =>
+    ({
+      // Matched on no-preference only. Testing for "reduce" would be wrong:
+      // "prefers-reduced-motion: no-preference" contains it too.
+      matches: allowed === query.includes('no-preference'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList) as typeof window.matchMedia;
+}
+
+const originalMatchMedia = window.matchMedia;
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
+});
 const at = (h: number, m = 0) => h * 60 + m;
 
 const flight = (number: string, local: string, over: Partial<Flight> = {}): Flight => ({
@@ -129,5 +151,49 @@ describe('an empty window', () => {
     expect(cards()).toHaveLength(0);
     // The ruler is still there: an empty board is still a board.
     expect(screen.getByLabelText('Flight timeline')).toBeTruthy();
+  });
+});
+
+describe('the cards arriving', () => {
+  it('starts them hidden and ends with every one readable', async () => {
+    allowMotion(true);
+    board();
+
+    // Proves the entrance actually ran, so the assertion below is not
+    // passing because nothing happened.
+    expect(cards()[0].style.opacity).toBe('0');
+
+    // The whole risk of animating an entrance: a board that never finishes
+    // animating is a board nobody can read.
+    await waitFor(
+      () => {
+        for (const card of cards()) expect(card.style.opacity).toBe('');
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it('hands the cards back where this component put them', async () => {
+    allowMotion(true);
+    board();
+
+    await waitFor(() => {
+      for (const card of cards()) expect(card.style.transform).toBe('');
+    });
+
+    // clearProps takes opacity and transform and nothing else. The position
+    // on the time axis is not the animation to clean up after.
+    expect(cards()[0].style.left).toBe(`${GUTTER}px`);
+    expect(cards()[0].style.top).toBe(`${GUTTER}px`);
+  });
+
+  it('sets nothing up at all when motion is unwelcome', () => {
+    allowMotion(false);
+    board();
+
+    for (const card of cards()) {
+      expect(card.style.opacity).toBe('');
+      expect(card.style.transform).toBe('');
+    }
   });
 });
