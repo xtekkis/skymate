@@ -4,6 +4,8 @@ import { CircleNotch, MagnifyingGlass, WarningCircle } from '@phosphor-icons/rea
 import AirportInput from './AirportInput';
 
 import type { FlightDirection, SearchParams } from '../models';
+import { todayLocal } from './boardGeometry';
+import { paramsFor, queryFrom, WINDOWS } from './searchQuery';
 import './controls.css';
 import './SearchForm.css';
 
@@ -18,35 +20,10 @@ interface SearchFormProps {
 type FieldName = 'airport' | 'date' | 'time';
 type Errors = Partial<Record<FieldName, string>>;
 
-/** AeroDataBox caps a query window at 12 hours. */
-const WINDOWS = [4, 8, 12] as const;
-
 const DIRECTIONS: { value: FlightDirection; label: string }[] = [
   { value: 'departure', label: 'Departures' },
   { value: 'arrival', label: 'Arrivals' },
 ];
-
-function pad(value: number) {
-  return String(value).padStart(2, '0');
-}
-
-function todayLocal() {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/**
- * Adds hours to a wall-clock date and time, rolling the date over when needed.
- *
- * Done in UTC on purpose. These are times at the airport, in a zone this
- * browser knows nothing about, so bringing the browser's own zone into it only
- * adds daylight saving to arithmetic that should be plain addition.
- */
-function addHours(date: string, time: string, hours: number) {
-  const end = new Date(`${date}T${time}:00Z`);
-  end.setUTCHours(end.getUTCHours() + hours);
-  return `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}T${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
-}
 
 function validate(values: { airport: string; date: string; time: string }): Errors {
   const errors: Errors = {};
@@ -62,31 +39,8 @@ function validate(values: { airport: string; date: string; time: string }): Erro
   return errors;
 }
 
-/** Turns a restored window back into the three fields that produced it. */
-function fieldsFrom(initial: SearchParams | null | undefined) {
-  if (!initial) return null;
-
-  // UTC on both sides, for the same reason addHours uses it. Measured in the
-  // browser's zone, a four hour window shared across a daylight saving change
-  // comes back as three, misses the list of windows, and silently becomes
-  // twelve.
-  const hours = Math.round(
-    (new Date(`${initial.toLocal}:00Z`).getTime() -
-      new Date(`${initial.fromLocal}:00Z`).getTime()) /
-      3_600_000,
-  );
-
-  return {
-    airport: initial.airport,
-    direction: initial.direction,
-    date: initial.fromLocal.slice(0, 10),
-    time: initial.fromLocal.slice(11, 16),
-    windowHours: WINDOWS.includes(hours as (typeof WINDOWS)[number]) ? hours : 12,
-  };
-}
-
 export default function SearchForm({ onSearch, isSearching = false, initial }: SearchFormProps) {
-  const restored = fieldsFrom(initial);
+  const restored = queryFrom(initial);
 
   const [airport, setAirport] = useState(restored?.airport ?? '');
   const [direction, setDirection] = useState<FlightDirection>(restored?.direction ?? 'departure');
@@ -127,12 +81,7 @@ export default function SearchForm({ onSearch, isSearching = false, initial }: S
       return;
     }
 
-    onSearch({
-      airport: airport.trim().toUpperCase(),
-      direction,
-      fromLocal: `${date}T${time}`,
-      toLocal: addHours(date, time, windowHours),
-    });
+    onSearch(paramsFor({ airport, direction, date, time, windowHours }));
   }
 
   function inputClass(field: FieldName, extra = '') {
