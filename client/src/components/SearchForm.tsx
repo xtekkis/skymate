@@ -4,6 +4,7 @@ import { CircleNotch, MagnifyingGlass, WarningCircle } from '@phosphor-icons/rea
 import AirportInput from './AirportInput';
 
 import type { FlightDirection, SearchParams } from '../models';
+import './controls.css';
 import './SearchForm.css';
 
 interface SearchFormProps {

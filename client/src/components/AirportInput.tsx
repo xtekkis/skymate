@@ -3,6 +3,7 @@ import { WarningCircle } from '@phosphor-icons/react';
 
 import type { Airport } from '../models';
 import { searchAirports } from '../services/api';
+import './controls.css';
 import './AirportInput.css';
 
 interface AirportInputProps {
