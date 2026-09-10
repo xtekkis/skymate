@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 
+import BoardHeader from './components/BoardHeader';
 import ChatDrawer from './components/ChatDrawer';
 import SmoothScroll from './components/SmoothScroll';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -36,6 +37,30 @@ function FocusMainOnNavigation() {
 }
 
 /**
+ * The header for the route you are on.
+ *
+ * Still in the shell and still outside the boundary, which is what makes it a
+ * way out of a page that threw. The board's masthead reads the airport from
+ * the URL rather than being handed it, so the shell does not have to know what
+ * any page is holding.
+ */
+function RouteHeader() {
+  const { pathname } = useLocation();
+  const [params] = useSearchParams();
+
+  if (pathname !== '/') return <Header />;
+
+  const airport = (params.get('airport') ?? '').toUpperCase();
+
+  return (
+    <BoardHeader
+      airport={/^[A-Z]{3}$/.test(airport) ? airport : ''}
+      direction={params.get('direction') === 'arrival' ? 'arrival' : 'departure'}
+    />
+  );
+}
+
+/**
  * The routes, and the boundary around them.
  *
  * Its own component so it can read the route, which is what the boundary
@@ -61,7 +86,7 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <SmoothScroll />
-        <Header />
+        <RouteHeader />
         <FocusMainOnNavigation />
         <Content />
 

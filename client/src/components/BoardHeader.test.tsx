@@ -86,3 +86,12 @@ describe('the live indicator', () => {
     expect(container.querySelector('.masthead__dot')?.getAttribute('aria-hidden')).toBe('true');
   });
 });
+
+describe('a board with nothing on it yet', () => {
+  it('drops the airport label rather than showing an empty one', () => {
+    render(<BoardHeader airport="" direction="departure" />);
+
+    expect(screen.getByText('Board live')).toBeTruthy();
+    expect(screen.queryByText(/departures/)).toBeNull();
+  });
+});

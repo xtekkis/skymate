@@ -49,13 +49,19 @@ export default function BoardHeader({ airport, direction }: BoardHeaderProps) {
           {clock}
         </time>
 
-        <span className="masthead__rule" aria-hidden="true" />
+        {/* Nothing has been searched yet, and " · departures" on its own
+            reads as a bug rather than as an empty state. */}
+        {airport && (
+          <>
+            <span className="masthead__rule" aria-hidden="true" />
 
-        <span className="masthead__label">
-          <span className="tabular">{airport}</span>
-          {' · '}
-          {direction === 'departure' ? 'departures' : 'arrivals'}
-        </span>
+            <span className="masthead__label">
+              <span className="tabular">{airport}</span>
+              {' · '}
+              {direction === 'departure' ? 'departures' : 'arrivals'}
+            </span>
+          </>
+        )}
       </div>
     </header>
   );

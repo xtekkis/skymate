@@ -19,9 +19,19 @@ beforeEach(() => {
 });
 
 describe('the tab order', () => {
+  /*
+   * On a route that still has the site header. The board has a masthead
+   * instead, which carries no navigation on purpose.
+   */
+  function showHeaderPage() {
+    vi.mocked(getFlightByNumber).mockResolvedValue({ number: 'BA117', count: 0, flights: [] });
+    window.history.pushState({}, '', '/flight/BA117');
+    render(<App />);
+  }
+
   it('starts on the first link that goes somewhere new', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    showHeaderPage();
 
     await user.tab();
 
@@ -30,7 +40,7 @@ describe('the tab order', () => {
   });
 
   it('keeps the wordmark clickable, just not a stop', () => {
-    render(<App />);
+    showHeaderPage();
 
     const brand = screen.getByRole('link', { name: 'Skymate' });
     expect(brand.getAttribute('href')).toBe('/');
@@ -94,5 +104,42 @@ describe('changing route', () => {
     // A search rewrites the query string, not the path. Focus must stay put.
     window.history.pushState({}, '', '/?airport=LHR');
     expect(document.activeElement).toBe(airport);
+  });
+});
+
+describe('which header a route gets', () => {
+  it('gives the board its masthead instead of the site header', () => {
+    render(<App />);
+
+    expect(screen.getByText('Board live')).toBeTruthy();
+    // The masthead carries no navigation. That is the design, not an omission.
+    expect(screen.queryByRole('link', { name: 'Flights' })).toBeNull();
+  });
+
+  it('gives every other route the site header', async () => {
+    vi.mocked(getFlightByNumber).mockResolvedValue({ number: 'BA117', count: 0, flights: [] });
+    window.history.pushState({}, '', '/flight/BA117');
+
+    render(<App />);
+
+    expect(screen.getByRole('link', { name: 'Flights' })).toBeTruthy();
+    expect(screen.queryByText('Board live')).toBeNull();
+  });
+
+  it('names the airport the board is showing, read from the URL', () => {
+    window.history.pushState({}, '', '/?airport=CDG&direction=arrival&from=2026-09-01T08:00&to=2026-09-01T12:00');
+
+    render(<App />);
+
+    expect(screen.getByText('CDG')).toBeTruthy();
+    expect(screen.getByText(/arrivals/)).toBeTruthy();
+  });
+
+  it('says nothing about an airport nobody has chosen', () => {
+    render(<App />);
+
+    // " · departures" beside an empty code reads as a bug, not as an empty
+    // board.
+    expect(screen.queryByText(/departures/)).toBeNull();
   });
 });
