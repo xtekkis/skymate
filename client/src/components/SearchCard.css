@@ -1,0 +1,70 @@
+/*
+ * The search card.
+ *
+ * A column, always. The form it replaces chose its column count from a
+ * viewport media query, which is the wrong question to ask inside a sidebar:
+ * on a large screen it laid six columns out in 366px and the labels landed on
+ * top of each other.
+ */
+.searchcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md);
+}
+
+.searchcard__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/*
+ * Tighter than the wide form's fields. At this width a label and its control
+ * read as one object, and the roomier spacing made them look unrelated.
+ */
+.searchcard .search__field {
+  gap: var(--space-1);
+}
+
+/* A time is narrower than a date, so it gets less room rather than half. */
+.searchcard__when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: var(--space-2);
+}
+
+.searchcard__select {
+  position: relative;
+  display: grid;
+}
+
+/*
+ * The native select arrow is the one control Safari and Firefox draw
+ * differently enough to notice, so the select gives up its own and this
+ * replaces it.
+ */
+.searchcard__select .search__input {
+  appearance: none;
+  padding-right: var(--space-6);
+}
+
+.searchcard__caret {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  translate: 0 -50%;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchcard__submit {
+  width: 100%;
+  margin-top: var(--space-2);
+}

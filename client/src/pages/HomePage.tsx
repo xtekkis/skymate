@@ -4,7 +4,7 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import DestinationGrid from '../components/DestinationGrid';
 import FlightBoard from '../components/FlightBoard';
-import SearchForm from '../components/SearchForm';
+import SearchCard from '../components/SearchCard';
 import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
 import { paramsFor, queryFrom, type BoardQuery } from '../components/searchQuery';
 import { useFlightSearch } from '../components/useFlightSearch';
@@ -134,7 +134,7 @@ export default function HomePage() {
             anyone looking at a masthead that already says Skymate. */}
         <h1 className="visually-hidden">Flight board</h1>
 
-        <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
+        <SearchCard onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
 
         {/* Always mounted. A live region that appears at the same moment as its
             text is often missed, because there was nothing there to change. */}
