@@ -70,7 +70,7 @@ describe('changing route', () => {
     await user.click(screen.getByRole('link', { name: 'Flights' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Flight schedules' })).toBeTruthy(),
+      expect(screen.getByRole('heading', { name: 'Flight board' })).toBeTruthy(),
     );
     // Without this, Tab would walk the header again instead of the page.
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('main')));

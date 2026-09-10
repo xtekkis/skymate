@@ -102,3 +102,35 @@
     background-position: -200% 0;
   }
 }
+
+/*
+ * The board page.
+ *
+ * One screen, two columns, and nothing below the fold. The whole point of a
+ * time axis is that it is one continuous surface you move around in, so the
+ * page itself must not scroll: the sidebar scrolls, and the board pans.
+ */
+body.is-board {
+  overflow: hidden;
+}
+
+.board-page {
+  display: grid;
+  grid-template-columns: 366px minmax(0, 1fr);
+  height: calc(100vh - var(--header-height));
+  /* Fills the small viewport on phones, where 100vh is the tall one. */
+  height: calc(100dvh - var(--header-height));
+}
+
+.board-page__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  /* minmax(0) on the track is not enough on its own for a flex child. */
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface-sunken);
+}

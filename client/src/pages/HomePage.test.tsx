@@ -56,7 +56,7 @@ describe('what a screen reader is told', () => {
     expect(screen.getByRole('status').textContent).toBe('');
   });
 
-  it('announces the count, not the table', async () => {
+  it('announces the count, not the board', async () => {
     flights.mockResolvedValue({
       airport: 'LHR',
       direction: 'departure',
@@ -70,11 +70,11 @@ describe('what a screen reader is told', () => {
 
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('2 departures at LHR'));
 
-    // The table is the thing a reader navigates. Announcing it would read out
-    // every row, which is what the old live region on the results block did.
-    const table = screen.getByRole('table');
-    expect(table.closest('[aria-live]')).toBeNull();
-    expect(screen.getByRole('status').contains(table)).toBe(false);
+    // The board is the thing a reader navigates. Announcing it would read out
+    // every card, which is what the old live region on the results block did.
+    const card = screen.getByRole('button', { name: /BA 117/ });
+    expect(card.closest('[aria-live]')).toBeNull();
+    expect(screen.getByRole('status').contains(card)).toBe(false);
   });
 
   it('says a search is running', async () => {
@@ -142,10 +142,10 @@ describe('the search in the URL', () => {
 
     show(SEARCH);
 
-    // Waited on the table rather than on the call count: the count is 1 the
+    // Waited on a card rather than on the call count: the count is 1 the
     // moment the search starts, so asserting it there would pass even if the
     // effect went on to fire again for every render after it.
-    await screen.findByRole('table');
+    await screen.findByRole('button', { name: /BA 117/ });
 
     expect(flights).toHaveBeenCalledTimes(1);
     expect(flights).toHaveBeenCalledWith({
@@ -159,7 +159,7 @@ describe('the search in the URL', () => {
   it('shows the empty form for a half-written URL instead of an error', async () => {
     show('/?airport=LON&from=nonsense');
 
-    expect(screen.getByRole('heading', { name: 'Flight schedules' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Flight board' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(flights).not.toHaveBeenCalled();
   });
@@ -186,19 +186,24 @@ describe('narrowing the board to one destination', () => {
       ],
     });
 
-  const rows = () => within(screen.getAllByRole('rowgroup')[1]).getAllByRole('row');
+  /*
+   * The chips and the cards are both buttons naming the same city now, so a
+   * bare /New York/ matches four things. The chips live in the sidebar.
+   */
+  const side = () => within(screen.getByRole('complementary'));
+  const cards = () => Array.from(document.querySelectorAll('.stage__canvas .card'));
+  const onBoard = (count: number) => waitFor(() => expect(cards()).toHaveLength(count));
 
   it('shows only that destination, without asking for the data again', async () => {
     mixed();
     const user = userEvent.setup();
     show(SEARCH);
 
-    await screen.findByRole('table');
-    expect(rows()).toHaveLength(3);
+    await onBoard(3);
 
-    await user.click(screen.getByRole('button', { name: /New York/ }));
+    await user.click(side().getByRole('button', { name: /New York/ }));
 
-    expect(rows()).toHaveLength(2);
+    expect(cards()).toHaveLength(2);
     // The filter is a view over data already fetched. Asking again would spend
     // an AeroDataBox unit to rearrange rows that are already on screen.
     expect(flights).toHaveBeenCalledTimes(1);
@@ -209,8 +214,8 @@ describe('narrowing the board to one destination', () => {
     const user = userEvent.setup();
     show(SEARCH);
 
-    await screen.findByRole('table');
-    await user.click(screen.getByRole('button', { name: /New York/ }));
+    await onBoard(3);
+    await user.click(side().getByRole('button', { name: /New York/ }));
 
     expect(screen.getByRole('status').textContent).toBe('2 of 3 departures, to JFK');
   });
@@ -220,11 +225,11 @@ describe('narrowing the board to one destination', () => {
     const user = userEvent.setup();
     show(SEARCH);
 
-    await screen.findByRole('table');
-    await user.click(screen.getByRole('button', { name: /New York/ }));
-    await user.click(screen.getByRole('button', { name: 'Show all destinations' }));
+    await onBoard(3);
+    await user.click(side().getByRole('button', { name: /New York/ }));
+    await user.click(side().getByRole('button', { name: 'Show all destinations' }));
 
-    expect(rows()).toHaveLength(3);
+    expect(cards()).toHaveLength(3);
     expect(screen.getByRole('status').textContent).toBe('3 departures at LHR');
   });
 });

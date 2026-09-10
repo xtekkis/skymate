@@ -126,7 +126,7 @@ describe('the header outside the boundary', () => {
     // is a navigation that changes the URL and nothing else.
     await user.click(screen.getByRole('link', { name: 'Flights' }));
 
-    expect(await screen.findByRole('heading', { name: 'Flight schedules' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Flight board' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: FAILED })).toBeNull();
   });
 });

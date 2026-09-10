@@ -1,36 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import DestinationGrid from '../components/DestinationGrid';
-import FlightList from '../components/FlightList';
-import HeroScroll from '../components/HeroScroll';
+import FlightBoard from '../components/FlightBoard';
 import SearchForm from '../components/SearchForm';
-import StoryBlocks from '../components/StoryBlocks';
-import type { SearchParams } from '../models';
+import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
+import { paramsFor, queryFrom, type BoardQuery } from '../components/searchQuery';
+import { useFlightSearch } from '../components/useFlightSearch';
 import { useToast } from '../components/toastContext';
-import {
-  errorStatus,
-  messageFromError,
-  searchFlights,
-  type FlightSearchResponse,
-} from '../services/api';
+import type { Flight, SearchParams } from '../models';
 import './HomePage.css';
-
-type Phase = 'idle' | 'loading' | 'error' | 'done';
 
 /** Statuses that describe the whole app rather than this one request. */
 const SITE_WIDE = new Set([429, 503]);
 
-
-const SKELETON_ROWS = 6;
-
 /**
  * The search lives in the query string rather than in component state.
  *
- * That is what makes going back from a flight restore the results instead of
- * an empty form, and it survives a refresh and makes a search shareable, which
+ * That is what makes going back from a flight restore the board instead of an
+ * empty one, and it survives a refresh and makes a search shareable, which
  * memory alone cannot do.
  */
 function readSearch(params: URLSearchParams): SearchParams | null {
@@ -39,7 +28,7 @@ function readSearch(params: URLSearchParams): SearchParams | null {
   const to = params.get('to') ?? '';
   const direction = params.get('direction') === 'arrival' ? 'arrival' : 'departure';
 
-  // A half written URL should show the empty form, not an error.
+  // A half written URL should show the empty board, not an error.
   if (!/^[A-Z]{3}$/.test(airport)) return null;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(from)) return null;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(to)) return null;
@@ -47,90 +36,75 @@ function readSearch(params: URLSearchParams): SearchParams | null {
   return { airport, direction, fromLocal: from, toLocal: to };
 }
 
+/**
+ * What the board shows before anyone has searched.
+ *
+ * A real date and time, so the ruler has hours on it and the axis is something
+ * to look at rather than a blank rectangle. The airport is empty on purpose:
+ * that is the field the search hook refuses, so an unsearched board costs
+ * nothing.
+ */
+function emptyBoard(): BoardQuery {
+  return { airport: '', direction: 'departure', date: todayLocal(), time: '08:00', windowHours: 12 };
+}
+
+/** The number is the real link, so opening a card goes where the number goes. */
+function detailHref(flight: Flight) {
+  const date = flight.scheduledLocal?.slice(0, 10) ?? flight.scheduledTime.slice(0, 10);
+  return `/flight/${encodeURIComponent(flight.number)}?date=${date}`;
+}
+
 export default function HomePage() {
   const showToast = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [result, setResult] = useState<FlightSearchResponse | null>(null);
-  const [error, setError] = useState('');
+
+  /*
+   * Reparsed rather than stored, so back, forward and a pasted link all take
+   * the same path onto the board.
+   */
+  const search = useMemo(() => readSearch(searchParams), [searchParams]);
+  const query = queryFrom(search) ?? emptyBoard();
+  const params = paramsFor(query);
+
+  const { phase, result, error, status: httpStatus } = useFlightSearch(params);
 
   /*
    * The destination the board is narrowed to, if any.
    *
    * Held here rather than in the URL, unlike the search itself. The URL is
-   * what the effect below watches, so writing a filter into it would re-run
-   * the search on every card press and spend an AeroDataBox unit to rearrange
-   * rows already on screen. This is a view over data we have, not a new query.
+   * what the search hook watches, so writing a filter into it would re-run the
+   * search on every chip press and spend an AeroDataBox unit to rearrange
+   * cards already on screen. This is a view over data we have, not a new query.
    */
   const [destination, setDestination] = useState<string | null>(null);
 
-  /** Guards against a slow first search landing after a faster second one. */
-  const latestRequest = useRef(0);
+  // A filter belongs to the results it was chosen from.
+  useEffect(() => setDestination(null), [result]);
+
+  const all = result?.flights ?? [];
+  const flights = destination
+    ? all.filter((flight) => flight.counterpart.iata === destination)
+    : all;
 
   /*
-   * Reparsed rather than stored, so back, forward and a pasted link all take
-   * the same path into the search.
-   *
-   * Stable for as long as the location is: useSearchParams memoises on
-   * location.search, so this memo only recomputes when the URL actually
-   * changes. That is what lets the effect below depend on it honestly instead
-   * of on a string built to stand in for it.
+   * The board fills the window and manages its own scrolling, so the document
+   * behind it must not scroll as well. Scoped to this page rather than set on
+   * the stylesheet, or the flight page would lose its scrollbar too.
    */
-  const search = useMemo(() => readSearch(searchParams), [searchParams]);
-
-  const run = useCallback(
-    async (params: SearchParams) => {
-      const id = ++latestRequest.current;
-      setPhase('loading');
-      setError('');
-
-      try {
-        const data = await searchFlights(params);
-        if (id !== latestRequest.current) return;
-        setResult(data);
-        // A filter belongs to the results it was chosen from.
-        setDestination(null);
-        setPhase('done');
-      } catch (caught) {
-        if (id !== latestRequest.current) return;
-
-        const message = messageFromError(caught);
-        setError(message);
-        setPhase('error');
-
-        // A rate limit or a spent allowance is a condition of the site, not a
-        // problem with this search, so it is also said out of band.
-        if (SITE_WIDE.has(errorStatus(caught) ?? 0)) showToast({ message });
-      }
-    },
-    [showToast],
-  );
+  useEffect(() => {
+    document.body.classList.add('is-board');
+    return () => document.body.classList.remove('is-board');
+  }, []);
 
   useEffect(() => {
-    if (!search) {
-      setPhase('idle');
-      setResult(null);
-      setDestination(null);
-      return;
-    }
-    void run(search);
-  }, [search, run]);
+    // A rate limit or a spent allowance is a condition of the site, not a
+    // problem with this search, so it is also said out of band.
+    if (phase === 'error' && SITE_WIDE.has(httpStatus ?? 0)) showToast({ message: error });
+  }, [phase, httpStatus, error, showToast]);
 
-  /**
-   * One sentence describing where the search has got to, for a screen reader.
-   *
-   * The results block used to be the live region itself, which meant finishing
-   * a search read out the entire table, row by row. A reader wants to know the
-   * search landed and how many flights there are; the table is then theirs to
-   * navigate.
-   */
-  const flights = result
-    ? destination
-      ? result.flights.filter((flight) => flight.counterpart.iata === destination)
-      : result.flights
-    : [];
-
-  const status =
+  /** One sentence describing where the search has got to, for a screen reader. */
+  const announcement =
     phase === 'loading'
       ? 'Searching flights'
       : phase === 'done' && result
@@ -141,106 +115,70 @@ export default function HomePage() {
             : `${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'} at ${result.airport}`
         : '';
 
-  /** Submitting writes the URL. The effect above notices and does the work. */
-  function handleSearch(params: SearchParams) {
+  /** Submitting writes the URL. The hook notices and does the work. */
+  function handleSearch(next: SearchParams) {
     setSearchParams({
-      airport: params.airport,
-      direction: params.direction,
-      from: params.fromLocal,
-      to: params.toLocal,
+      airport: next.airport,
+      direction: next.direction,
+      from: next.fromLocal,
+      to: next.toLocal,
     });
   }
 
   return (
-    <>
-      <HeroScroll />
-
-      <motion.main
-        id="main"
-        tabIndex={-1}
-        className="page"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h1>Flight schedules</h1>
-        <p className="page__lead">
-          Live departures and arrivals for any airport, with status, terminal and aircraft.
-        </p>
+    <main id="main" tabIndex={-1} className="board-page">
+      {/* Lenis is still mounted app-wide, and it swallows the wheel unless a
+          nested scroller says otherwise. */}
+      <aside className="board-page__side" data-lenis-prevent>
+        {/* The board is the page. Its title is owed to a screen reader, not to
+            anyone looking at a masthead that already says Skymate. */}
+        <h1 className="visually-hidden">Flight board</h1>
 
         <SearchForm onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
 
-        <div className="results" aria-busy={phase === 'loading'}>
-          {/* Always mounted. A live region that appears at the same moment as its
-              text is often missed, because there was nothing there to change. */}
-          <p className="visually-hidden" role="status">
-            {status}
-          </p>
+        {/* Always mounted. A live region that appears at the same moment as its
+            text is often missed, because there was nothing there to change. */}
+        <p className="visually-hidden" role="status">
+          {announcement}
+        </p>
 
-          {phase === 'loading' && (
-            <div className="skeleton" aria-hidden="true">
-              {Array.from({ length: SKELETON_ROWS }, (_, row) => (
-                <div className="skeleton__row" key={row}>
-                  <span className="skeleton__bar skeleton__bar--time" />
-                  <span className="skeleton__bar skeleton__bar--number" />
-                  <span className="skeleton__bar skeleton__bar--airline" />
-                  <span className="skeleton__bar skeleton__bar--status" />
-                </div>
-              ))}
+        {phase === 'error' && (
+          <div className="notice notice--error" role="alert">
+            <WarningCircle size={20} weight="fill" aria-hidden="true" />
+            <div>
+              <p className="notice__title">Search failed</p>
+              <p className="notice__body">{error}</p>
             </div>
-          )}
+          </div>
+        )}
 
-          {phase === 'error' && (
-            <div className="notice notice--error" role="alert">
-              <WarningCircle size={20} weight="fill" aria-hidden="true" />
-              <div>
-                <p className="notice__title">Search failed</p>
-                <p className="notice__body">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {phase === 'done' && result && result.count === 0 && (
-            <div className="notice">
-              <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
-              <div>
-                <p className="notice__title">No flights in that window</p>
-                <p className="notice__body">
-                  Try a longer window, a different time of day, or check the airport code.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {phase === 'done' && result && result.count > 0 && (
-            <>
-              <p className="results__count">
-                {destination ? (
-                  <>
-                    {flights.length} of {result.count}{' '}
-                    {result.direction === 'departure' ? 'departures' : 'arrivals'}, to{' '}
-                    <span className="tabular">{destination}</span>
-                  </>
-                ) : (
-                  <>
-                    {result.count} {result.direction === 'departure' ? 'departures' : 'arrivals'} at{' '}
-                    <span className="tabular">{result.airport}</span>
-                  </>
-                )}
+        {phase === 'done' && result?.count === 0 && (
+          <div className="notice">
+            <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
+            <div>
+              <p className="notice__title">No flights in that window</p>
+              <p className="notice__body">
+                Try a longer window, a different time of day, or check the airport code.
               </p>
-              <FlightList flights={flights} direction={result.direction} />
+            </div>
+          </div>
+        )}
+        {phase === 'done' && result && result.count > 0 && (
+          <DestinationGrid
+            flights={result.flights}
+            selected={destination}
+            onSelect={setDestination}
+          />
+        )}
+      </aside>
 
-              <DestinationGrid
-                flights={result.flights}
-                selected={destination}
-                onSelect={setDestination}
-              />
-            </>
-          )}
-        </div>
-
-          <StoryBlocks />
-      </motion.main>
-    </>
+      <FlightBoard
+        flights={flights}
+        date={query.date}
+        start={minutesOfLocal(params.fromLocal)}
+        windowHours={query.windowHours}
+        onOpen={(flight) => navigate(detailHref(flight))}
+      />
+    </main>
   );
 }
