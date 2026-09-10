@@ -286,7 +286,6 @@ export default function ChatDrawer() {
 
         <div
           className="chat__log"
-          data-lenis-prevent
           role="log"
           aria-live="polite"
           aria-busy={isSending}

@@ -127,9 +127,7 @@ export default function HomePage() {
 
   return (
     <main id="main" tabIndex={-1} className="board-page">
-      {/* Lenis is still mounted app-wide, and it swallows the wheel unless a
-          nested scroller says otherwise. */}
-      <aside className="board-page__side" data-lenis-prevent>
+      <aside className="board-page__side">
         {/* The board is the page. Its title is owed to a screen reader, not to
             anyone looking at a masthead that already says Skymate. */}
         <h1 className="visually-hidden">Flight board</h1>
