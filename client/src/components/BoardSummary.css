@@ -1,0 +1,100 @@
+/*
+ * The second card in the sidebar: what came back, and where it goes.
+ *
+ * The destinations used to be full-width cards with a plane glyph on each,
+ * which in a 366px column meant three of them filled the screen and the rest
+ * were below the fold. They are chips here because there can be eight of them
+ * and none of them is the point on its own.
+ */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.summary__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Baseline, so the big number and the words beside it sit on one line. */
+.summary__count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.summary__number {
+  font-size: var(--text-2xl);
+  font-weight: 500;
+}
+
+.summary__of {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.summary__window {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+  text-wrap: pretty;
+}
+
+.summary__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/*
+ * A chip carries its own hue, the same one the place always gets, so a
+ * destination is recognisable between searches. Chroma stays low: this is
+ * tinted paper, not eight competing accents.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: oklch(0.62 0.06 var(--chip-hue) / 0.14);
+  border: 1px solid oklch(0.62 0.06 var(--chip-hue) / 0.3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.chip:hover {
+  background: oklch(0.62 0.06 var(--chip-hue) / 0.24);
+}
+
+.chip--on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-quiet);
+}
+
+/* The code is the half you are scanning for; the count is context. */
+.chip__code {
+  font-weight: 500;
+}
+
+.chip__count {
+  color: var(--text-faint);
+}
+
+.chip--on .chip__count {
+  color: var(--text-muted);
+}

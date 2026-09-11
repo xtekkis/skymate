@@ -227,7 +227,7 @@ describe('narrowing the board to one destination', () => {
 
     await onBoard(3);
     await user.click(side().getByRole('button', { name: /New York/ }));
-    await user.click(side().getByRole('button', { name: 'Show all destinations' }));
+    await user.click(side().getByRole('button', { name: /New York/ }));
 
     expect(cards()).toHaveLength(3);
     expect(screen.getByRole('status').textContent).toBe('3 departures at LHR');

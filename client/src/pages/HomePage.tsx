@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
-import DestinationGrid from '../components/DestinationGrid';
+import BoardSummary from '../components/BoardSummary';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
 import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
@@ -161,11 +161,17 @@ export default function HomePage() {
             </div>
           </div>
         )}
-        {phase === 'done' && result && result.count > 0 && (
-          <DestinationGrid
+        {result && result.count > 0 && (
+          <BoardSummary
             flights={result.flights}
+            direction={result.direction}
+            airport={result.airport}
+            from={result.from}
+            to={result.to}
+            shown={flights.length}
             selected={destination}
             onSelect={setDestination}
+            isSearching={phase === 'loading'}
           />
         )}
       </aside>
