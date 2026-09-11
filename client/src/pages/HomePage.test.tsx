@@ -233,3 +233,44 @@ describe('narrowing the board to one destination', () => {
     expect(screen.getByRole('status').textContent).toBe('3 departures at LHR');
   });
 });
+
+describe('what the board takes over from the document', () => {
+  const theme = () => document.documentElement.getAttribute('data-theme');
+
+  it('is dark even when the reader has chosen light', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+
+    show('/');
+
+    // The masthead carries no theme toggle, so a light board is one the
+    // reader cannot get out of.
+    expect(theme()).toBe('dark');
+  });
+
+  it('gives the chosen theme back on the way out', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+
+    const view = show('/');
+    view.unmount();
+
+    expect(theme()).toBe('light');
+  });
+
+  it('leaves the system preference alone when nothing was chosen', () => {
+    document.documentElement.removeAttribute('data-theme');
+
+    const view = show('/');
+    expect(theme()).toBe('dark');
+
+    view.unmount();
+
+    // Putting "light" back would be inventing a choice nobody made.
+    expect(theme()).toBeNull();
+  });
+
+  it('stops the document scrolling behind the board', () => {
+    show('/');
+
+    expect(document.body.classList.contains('is-board')).toBe(true);
+  });
+});
