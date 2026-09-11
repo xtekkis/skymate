@@ -115,6 +115,8 @@ body.is-board {
 }
 
 .board-page {
+  /* The backdrop is absolute inside this, so this is what it is absolute to. */
+  position: relative;
   display: grid;
   grid-template-columns: 366px minmax(0, 1fr);
   height: calc(100vh - var(--header-height));
@@ -132,5 +134,18 @@ body.is-board {
   overflow-x: hidden;
   overflow-y: auto;
   border-right: 1px solid var(--border);
-  background: var(--surface-sunken);
+  /*
+   * Translucent, so the wash and the arcs carry on behind it rather than
+   * stopping at a hard edge 366px in. The blur is what keeps the text on top
+   * of it readable while they do.
+   */
+  background: oklch(0.17 0.015 262 / 0.62);
+  backdrop-filter: blur(14px);
+}
+
+/* Above the backdrop, which is z-index 0 inside the same stacking context. */
+.board-page__side,
+.board-page > .stage {
+  position: relative;
+  z-index: 1;
 }

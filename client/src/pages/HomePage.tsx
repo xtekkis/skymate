@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
+import BoardBackdrop from '../components/BoardBackdrop';
 import BoardSummary from '../components/BoardSummary';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
@@ -143,6 +144,8 @@ export default function HomePage() {
 
   return (
     <main id="main" tabIndex={-1} className="board-page">
+      <BoardBackdrop />
+
       <aside className="board-page__side">
         {/* The board is the page. Its title is owed to a screen reader, not to
             anyone looking at a masthead that already says Skymate. */}
