@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 
+import { useBackdropParallax } from './useBackdropParallax';
 import { useReducedMotion } from './useReducedMotion';
 
 import './BoardBackdrop.css';
@@ -86,13 +87,15 @@ const ROUTES: Route[] = [
  */
 export default function BoardBackdrop() {
   const reduced = useReducedMotion();
+  const layers = useBackdropParallax(!reduced);
 
   return (
     <div className="backdrop" aria-hidden="true">
-      <div className="backdrop__wash" />
+      <div className="backdrop__wash" ref={layers.wash} />
 
       <svg
         className="backdrop__arcs"
+        ref={layers.arcs}
         viewBox="0 0 1600 900"
         preserveAspectRatio="xMidYMid slice"
         focusable="false"
@@ -147,7 +150,10 @@ export default function BoardBackdrop() {
           ))}
       </svg>
 
-      <div className="backdrop__dots" />
+      <div className="backdrop__dots" ref={layers.dots} />
+      {/* No ref, and none wanted. Grain that drifts with the others stops
+          reading as grain on the screen and starts reading as a fourth
+          picture sliding about. */}
       <div className="backdrop__grain" />
     </div>
   );
