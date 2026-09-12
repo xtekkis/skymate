@@ -58,7 +58,16 @@ export default function BoardStage({
   }, [onHeight]);
 
   return (
-    <section className="stage" ref={stageRef} aria-label="Flight timeline">
+    <section
+      className="stage"
+      ref={stageRef}
+      aria-label="Flight timeline"
+      /*
+       * A tab stop, because the board is a thing you move around in and the
+       * only other ways to do that are a mouse wheel and a drag.
+       */
+      tabIndex={0}
+    >
       <div className="stage__ruler">
         <div className="stage__rulerInner" ref={rulerRef} style={{ width }}>
           {ticks.map((tick) => (

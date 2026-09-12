@@ -15,6 +15,16 @@
 
 /* The ruler */
 
+/*
+ * The board is a tab stop now, so it has to show when it has focus. Inset,
+ * because the stage is flush against the sidebar and the window edge, and an
+ * outline drawn outside it would be half off the screen.
+ */
+.stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .stage__ruler {
   position: absolute;
   top: 0;

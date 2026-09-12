@@ -2,7 +2,8 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import BoardStage from './BoardStage';
-import { RULER_H, contentWidth } from './boardGeometry';
+import { LANE_H, PX_PER_MINUTE, RULER_H, contentWidth } from './boardGeometry';
+import { STEP_MINUTES } from './useBoardPan';
 
 const at = (h: number, m = 0) => h * 60 + m;
 const WINDOW = 4;
@@ -443,5 +444,115 @@ describe('letting go mid sweep', () => {
     // nothing left to write to.
     expect(raf.mock.calls.length).toBe(asked);
     raf.mockRestore();
+  });
+});
+
+describe('panning from the keyboard', () => {
+  /** What one press of an arrow is worth sideways. */
+  const step = STEP_MINUTES * PX_PER_MINUTE;
+
+  function press(stage: HTMLElement, key: string, target?: HTMLElement) {
+    fireEvent.keyDown(target ?? stage, { key });
+  }
+
+  it('is reachable by tab at all', () => {
+    const { stage } = board();
+
+    // Without this the only ways through the window are a wheel and a drag.
+    expect(stage.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('moves forward half an hour at a time', () => {
+    const { stage, canvas } = board();
+
+    press(stage, 'ArrowRight');
+
+    expect(xOf(canvas)).toBe(-step);
+  });
+
+  it('carries the ruler with it, the same as a drag does', () => {
+    const { stage, canvas, ruler } = board();
+
+    press(stage, 'ArrowRight');
+
+    expect(xOf(ruler)).toBe(xOf(canvas));
+  });
+
+  it('stops at the start rather than running past it', () => {
+    const { stage, canvas } = board();
+
+    press(stage, 'ArrowLeft');
+
+    // Already at the left edge, so there is nowhere to go.
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('goes to the far end in one press', () => {
+    const { stage, canvas } = board();
+
+    press(stage, 'End');
+
+    expect(xOf(canvas)).toBe(900 - contentWidth(WINDOW));
+  });
+
+  it('and back to the beginning in one', () => {
+    const { stage, canvas } = board();
+
+    press(stage, 'End');
+    press(stage, 'Home');
+
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('moves a screen at a time on page down', () => {
+    // A narrow viewport on purpose: against a 900px one a four hour window
+    // has less than a screen of travel in it, so this would clamp to the end
+    // and prove nothing that End does not already prove.
+    const { stage, canvas } = board(300);
+
+    press(stage, 'PageDown');
+
+    expect(xOf(canvas)).toBe(-300);
+  });
+
+  it('moves a lane at a time vertically', () => {
+    const { stage, canvas } = board(900);
+    Object.defineProperty(stage, 'clientHeight', { value: RULER_H + LANE_H, configurable: true });
+
+    press(stage, 'ArrowDown');
+
+    // One lane down, or as far as the lanes that overflowed allow.
+    expect(yOf(canvas)).toBeLessThanOrEqual(0);
+  });
+
+  it('leaves the board alone when a card has focus', () => {
+    const { stage, canvas, card } = board();
+
+    press(stage, 'ArrowRight', card);
+
+    // A card is a button. Arrows pressed on one belong to whatever the
+    // reader is doing there, not to the board underneath it.
+    expect(canvas.style.transform).toBe('');
+  });
+
+  it('lets every other key through', () => {
+    const { stage } = board();
+
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    stage.dispatchEvent(event);
+
+    // Swallowing keys it does not handle is how a board eats Tab and traps
+    // anyone moving through the page.
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('takes the keys it does handle', () => {
+    const { stage } = board();
+
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    stage.dispatchEvent(event);
+
+    // Or the page scrolls sideways underneath the board as well.
+    expect(event.defaultPrevented).toBe(true);
   });
 });

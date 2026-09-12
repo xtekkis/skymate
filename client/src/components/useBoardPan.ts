@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-import { RULER_H, clampPan } from './boardGeometry';
+import { LANE_H, PX_PER_MINUTE, RULER_H, clampPan } from './boardGeometry';
 
 interface BoardPanOptions {
   stageRef: RefObject<HTMLElement | null>;
@@ -20,6 +20,15 @@ export const DECAY = 0.92;
 
 /** Below a quarter of a pixel a frame there is nothing left to see. */
 export const MIN_VELOCITY = 0.25;
+
+/**
+ * How far one press of an arrow key travels.
+ *
+ * Half an hour sideways, because the ruler is marked in half hours and a step
+ * that lands between two marks is a step you cannot count. One lane
+ * vertically, for the same reason: the rows are the unit.
+ */
+export const STEP_MINUTES = 30;
 
 /**
  * Dragging the board.
@@ -125,6 +134,64 @@ export function useBoardPan({
     }
 
     /**
+     * Panning from the keyboard.
+     *
+     * Only when the stage itself has focus. A card inside it is a button, and
+     * arrows pressed while one is focused belong to whatever the reader is
+     * doing there rather than to the board underneath.
+     *
+     * Home and End go to the ends of the window, which is the one thing that
+     * would otherwise take forty presses.
+     */
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.target !== stage) return;
+
+      const stageEl = stageRef.current;
+      const viewW = stageEl?.clientWidth ?? 0;
+      const step = STEP_MINUTES * PX_PER_MINUTE;
+
+      let { x, y } = pan.current;
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          x += step;
+          break;
+        case 'ArrowRight':
+          x -= step;
+          break;
+        case 'ArrowUp':
+          y += LANE_H;
+          break;
+        case 'ArrowDown':
+          y -= LANE_H;
+          break;
+        case 'Home':
+          x = 0;
+          break;
+        case 'End':
+          // Clamped anyway, so anything past the end lands on the end.
+          x = -size.current.width;
+          break;
+        case 'PageUp':
+          x += viewW;
+          break;
+        case 'PageDown':
+          x -= viewW;
+          break;
+        default:
+          return;
+      }
+
+      // Only now that a key we handle has been recognised, or this eats every
+      // other key the page might want, Tab included.
+      event.preventDefault();
+
+      cancelAnimationFrame(frame.current);
+      velocity.current = { x: 0, y: 0 };
+      apply(x, y);
+    }
+
+    /**
      * Eats the click a drag is about to produce.
      *
      * Capturing and one-shot, so it lands before the card underneath ever
@@ -193,6 +260,7 @@ export function useBoardPan({
     }
 
     stage.addEventListener('wheel', onWheel, { passive: false });
+    stage.addEventListener('keydown', onKeyDown);
     stage.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
@@ -202,6 +270,7 @@ export function useBoardPan({
       cancelAnimationFrame(frame.current);
       stage.removeEventListener('click', swallow, { capture: true });
       stage.removeEventListener('wheel', onWheel);
+      stage.removeEventListener('keydown', onKeyDown);
       stage.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
