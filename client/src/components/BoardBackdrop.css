@@ -38,6 +38,30 @@
 }
 
 /*
+ * The dashes travel their own route, each at its own pace, which is what
+ * turns five static curves into something with weather in it.
+ *
+ * Duration and direction are set per route on the element. The offset is
+ * larger than any of these paths, so every one of them wraps rather than
+ * stopping short and snapping back.
+ *
+ * No reduced-motion rule here on purpose: the blanket one in index.css
+ * already flattens every animation in the app, and repeating it locally is
+ * how a second, quietly different rule ends up outliving the first.
+ */
+.backdrop__route {
+  animation-name: backdrop-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes backdrop-drift {
+  to {
+    stroke-dashoffset: -1200;
+  }
+}
+
+/*
  * A field of dots, faded out towards the edges so it does not end in a line.
  */
 .backdrop__dots {
