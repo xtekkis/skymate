@@ -3,10 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import BoardStage from './BoardStage';
 import { LANE_H, PX_PER_MINUTE, RULER_H, contentWidth } from './boardGeometry';
-import { STEP_MINUTES } from './useBoardPan';
+import { STEP_MINUTES, THUMB_MIN } from './useBoardPan';
 
 const at = (h: number, m = 0) => h * 60 + m;
 const WINDOW = 4;
+
+/** The scrubber's groove, given a size jsdom will not invent for it. */
+const TRACK_W = 400;
+const TRACK_X = 100;
 
 /** jsdom reports every element as zero wide, so the viewport has to be said. */
 function board(viewport = 900) {
@@ -19,15 +23,39 @@ function board(viewport = 900) {
   const stage = view.container.querySelector<HTMLElement>('.stage')!;
   Object.defineProperty(stage, 'clientWidth', { value: viewport, configurable: true });
 
+  /*
+   * jsdom gives every element a zero box, so the groove has to be told how
+   * wide it is and where it starts. Without this a scrub divides by zero.
+   */
+  const track = view.container.querySelector<HTMLElement>('.stage__track')!;
+  Object.defineProperty(track, 'clientWidth', { value: TRACK_W, configurable: true });
+  track.getBoundingClientRect = () =>
+    ({ left: TRACK_X, width: TRACK_W, right: TRACK_X + TRACK_W, top: 0, bottom: 0, height: 6, x: TRACK_X, y: 0, toJSON: () => ({}) }) as DOMRect;
+
+  /*
+   * The hook measures on mount, which in here is before any of the sizes
+   * above were defined. A browser has laid the page out by then; jsdom has
+   * not, so it is told to measure again.
+   */
+  fireEvent(window, new Event('resize'));
+
   return {
     stage,
     canvas: view.container.querySelector<HTMLElement>('.stage__canvas')!,
     ruler: view.container.querySelector<HTMLElement>('.stage__rulerInner')!,
     card: view.getByRole('button', { name: 'a card' }),
+    track,
+    thumb: view.container.querySelector<HTMLElement>('.stage__thumb')!,
   };
 }
 
-/** The x out of a translate3d, as a number. */
+/**
+ * The x out of a translate3d, as a number.
+ *
+ * Always present: the pan writes its position once on mount so the scrubber
+ * thumb has a size before anything has been moved. Not moved therefore means
+ * zero, not the absence of a style.
+ */
 const xOf = (el: HTMLElement) => Number(/translate3d\((-?[\d.]+)px/.exec(el.style.transform)?.[1]);
 
 /** And the y, which for the ruler must never be anything but zero. */
@@ -228,7 +256,7 @@ describe('grabbing the board by a card', () => {
     fireEvent.pointerDown(optedOut, { clientX: 600 });
     fireEvent.pointerMove(window, { clientX: 400 });
 
-    expect(canvas.style.transform).toBe('');
+    expect(xOf(canvas)).toBe(0);
   });
 
   it('does not open a card that was only dragged across', () => {
@@ -408,7 +436,7 @@ describe('letting go mid sweep', () => {
 
     // A card is under that press and about to be opened. Nothing may slide
     // out from under it.
-    expect(canvas.style.transform).toBe('');
+    expect(xOf(canvas)).toBe(0);
   });
 
   it('stops when the board is caught again', async () => {
@@ -532,7 +560,7 @@ describe('panning from the keyboard', () => {
 
     // A card is a button. Arrows pressed on one belong to whatever the
     // reader is doing there, not to the board underneath it.
-    expect(canvas.style.transform).toBe('');
+    expect(xOf(canvas)).toBe(0);
   });
 
   it('lets every other key through', () => {
@@ -554,5 +582,121 @@ describe('panning from the keyboard', () => {
 
     // Or the page scrolls sideways underneath the board as well.
     expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+describe('the scrubber', () => {
+  /** How far the board can travel, which is what the groove stands for. */
+  const travel = (viewport: number) => contentWidth(WINDOW) - viewport;
+
+  function scrub(track: HTMLElement, clientX: number) {
+    fireEvent.pointerDown(track, { clientX });
+    fireEvent.pointerUp(window, { clientX });
+  }
+
+  it('takes the board to the far end when pressed at the far end', () => {
+    const { track, canvas } = board();
+
+    scrub(track, TRACK_X + TRACK_W);
+
+    expect(xOf(canvas)).toBe(-travel(900));
+  });
+
+  it('takes it back to the start when pressed at the start', () => {
+    const { track, canvas } = board();
+
+    scrub(track, TRACK_X + TRACK_W);
+    scrub(track, TRACK_X);
+
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('lands halfway for a press halfway', () => {
+    const { track, canvas } = board();
+
+    scrub(track, TRACK_X + TRACK_W / 2);
+
+    expect(xOf(canvas)).toBe(-travel(900) / 2);
+  });
+
+  it('stays inside the groove however far past it the pointer goes', () => {
+    const { track, canvas } = board();
+
+    scrub(track, TRACK_X + TRACK_W * 4);
+    expect(xOf(canvas)).toBe(-travel(900));
+
+    scrub(track, TRACK_X - 900);
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('keeps moving while the pointer is held down and slides', () => {
+    const { track, canvas } = board();
+
+    fireEvent.pointerDown(track, { clientX: TRACK_X });
+    fireEvent.pointerMove(window, { clientX: TRACK_X + TRACK_W / 2 });
+
+    expect(xOf(canvas)).toBe(-travel(900) / 2);
+  });
+
+  it('stops following once the pointer is let go', () => {
+    const { track, canvas } = board();
+
+    fireEvent.pointerDown(track, { clientX: TRACK_X });
+    fireEvent.pointerUp(window, { clientX: TRACK_X });
+    fireEvent.pointerMove(window, { clientX: TRACK_X + TRACK_W });
+
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('does not drag the board as well as scrub it', () => {
+    const { track, canvas } = board();
+
+    fireEvent.pointerDown(track, { clientX: TRACK_X });
+    fireEvent.pointerMove(window, { clientX: TRACK_X - 200 });
+
+    // The groove is inside the stage. Without the scrub claiming the press,
+    // one pointer down would start a scrub and a drag at once.
+    expect(xOf(canvas)).toBe(0);
+  });
+
+  it('shows how much of the window is on screen', () => {
+    const { thumb } = board();
+
+    // 900 of a 1180px board, so most of the groove.
+    const expected = (900 / contentWidth(WINDOW)) * TRACK_W;
+    expect(Math.round(parseFloat(thumb.style.width))).toBe(Math.round(expected));
+  });
+
+  it('never shrinks to something too small to grab', () => {
+    const { thumb } = board(30);
+
+    // A narrow stage on a long window works out at a few pixels otherwise.
+    expect(parseFloat(thumb.style.width)).toBe(THUMB_MIN);
+  });
+
+  it('moves the thumb as the board moves', () => {
+    const { stage, thumb } = board();
+
+    const before = parseFloat(thumb.style.left);
+    fireEvent.keyDown(stage, { key: 'End' });
+
+    expect(parseFloat(thumb.style.left)).toBeGreaterThan(before);
+  });
+
+  it('puts the thumb at the end of the groove when the board is at its end', () => {
+    const { stage, thumb } = board();
+
+    fireEvent.keyDown(stage, { key: 'End' });
+
+    const width = parseFloat(thumb.style.width);
+    expect(Math.round(parseFloat(thumb.style.left))).toBe(Math.round(TRACK_W - width));
+  });
+
+  it('has a thumb before anything has been moved at all', () => {
+    const { thumb } = board();
+
+    // Written on mount, or the scrubber is an empty groove until the first
+    // drag and reads as broken.
+    expect(thumb.style.width).not.toBe('');
   });
 });

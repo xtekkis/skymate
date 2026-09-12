@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 
 import { contentWidth, toTicks } from './boardGeometry';
 import { useBoardPan } from './useBoardPan';
@@ -45,7 +45,19 @@ export default function BoardStage({
   const canvasRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
 
-  useBoardPan({ stageRef, canvasRef, rulerRef, contentWidth: width, contentHeight });
+  const hintId = useId();
+  const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
+
+  useBoardPan({
+    stageRef,
+    canvasRef,
+    rulerRef,
+    contentWidth: width,
+    contentHeight,
+    trackRef,
+    thumbRef,
+  });
 
   useEffect(() => {
     if (!onHeight) return;
@@ -62,6 +74,7 @@ export default function BoardStage({
       className="stage"
       ref={stageRef}
       aria-label="Flight timeline"
+      aria-describedby={hintId}
       /*
        * A tab stop, because the board is a thing you move around in and the
        * only other ways to do that are a mouse wheel and a drag.
@@ -88,6 +101,28 @@ export default function BoardStage({
         style={{ width, height: contentHeight || undefined }}
       >
         {children}
+      </div>
+      <p className="visually-hidden" id={hintId}>
+        Use the arrow keys to move through the window, or Home and End for
+        either edge of it.
+      </p>
+
+      {/*
+       * Hidden from a screen reader on purpose. It is a second way to do what
+       * the arrow keys already do, and the words on it describe a gesture
+       * rather than anything a reader could act on.
+       *
+       * data-no-pan, or pressing the groove would start a drag of the board
+       * as well as a scrub of it.
+       */}
+      <div className="stage__scrub" aria-hidden="true" data-no-pan>
+        <span className="stage__scrubLabel">Drag or scroll</span>
+
+        {/* The gesture belongs to the pan, which already listens on the
+            window and so can follow a scrub past either end of the groove. */}
+        <div className="stage__track" ref={trackRef} data-scrub>
+          <div className="stage__thumb" ref={thumbRef} />
+        </div>
       </div>
     </section>
   );

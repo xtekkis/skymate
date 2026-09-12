@@ -82,3 +82,53 @@
   height: 100%;
   will-change: transform;
 }
+
+/*
+ * The scrubber.
+ *
+ * Sits over the bottom of the stage rather than below it, because the board
+ * fills the stage and there is no below. Right-inset clear of the assistant's
+ * button, which lives in that corner.
+ */
+.stage__scrub {
+  position: absolute;
+  right: 6.25rem;
+  bottom: var(--space-5);
+  left: var(--space-4);
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stage__scrubLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.stage__track {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.1);
+  cursor: pointer;
+}
+
+/*
+ * Taller than its groove and centred on it, so there is something to take
+ * hold of. Width and position are written by the pan, since they are a
+ * picture of it.
+ */
+.stage__thumb {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: oklch(1 0 0 / 0.32);
+}

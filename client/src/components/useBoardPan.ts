@@ -10,6 +10,10 @@ interface BoardPanOptions {
   contentWidth: number;
   /** And how tall, which is only more than the stage once lanes overflow. */
   contentHeight: number;
+  /** The scrubber's groove, which is also what a scrub position is measured against. */
+  trackRef?: RefObject<HTMLElement | null>;
+  /** The part of it that shows where in the window you are. */
+  thumbRef?: RefObject<HTMLElement | null>;
 }
 
 /** Past this, a pointer was dragging the board rather than clicking a card. */
@@ -31,6 +35,14 @@ export const MIN_VELOCITY = 0.25;
 export const STEP_MINUTES = 30;
 
 /**
+ * The smallest the scrubber's thumb is allowed to get.
+ *
+ * A twelve hour window in a narrow stage works out at a few pixels, which is
+ * both unreadable and too small to take hold of.
+ */
+export const THUMB_MIN = 28;
+
+/**
  * Dragging the board.
  *
  * Nothing here is state. The offset changes on every pointer move, and a
@@ -39,8 +51,10 @@ export const STEP_MINUTES = 30;
  * straight to two transforms instead, which keeps the whole gesture on the
  * compositor.
  *
- * Returns a ref reporting whether the last gesture actually moved, so a card
- * can tell a click from the end of a drag across it.
+ * Owns the scrubber's gesture too, rather than handing out a function to
+ * drive it. A scrub that begins on the groove and carries on past the end of
+ * it needs the same window-level listeners a drag does, and they are already
+ * here.
  */
 export function useBoardPan({
   stageRef,
@@ -48,6 +62,8 @@ export function useBoardPan({
   rulerRef,
   contentWidth,
   contentHeight,
+  trackRef,
+  thumbRef,
 }: BoardPanOptions) {
   const pan = useRef({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; fromX: number; fromY: number } | null>(null);
@@ -59,6 +75,9 @@ export function useBoardPan({
   // not need the listeners torn down and rebuilt.
   const size = useRef({ width: contentWidth, height: contentHeight });
   size.current = { width: contentWidth, height: contentHeight };
+
+  /** Whether the pointer currently down began on the scrubber. */
+  const scrubbing = useRef(false);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -88,6 +107,33 @@ export function useBoardPan({
       if (rulerRef.current) {
         rulerRef.current.style.transform = `translate3d(${pan.current.x}px, 0, 0)`;
       }
+
+      drawThumb(viewW);
+    }
+
+    /**
+     * The thumb, which is a picture of two things at once.
+     *
+     * Its width is how much of the window is on screen, and its position is
+     * how far through that window you are. Both are read off the same numbers
+     * the pan is clamped by, so it cannot disagree with the board.
+     */
+    function drawThumb(viewW: number) {
+      const track = trackRef?.current;
+      const thumb = thumbRef?.current;
+      if (!track || !thumb) return;
+
+      const content = size.current.width;
+      const trackW = track.clientWidth;
+
+      const onScreen = content > 0 ? Math.min(1, viewW / content) : 1;
+      const width = Math.max(THUMB_MIN, onScreen * trackW);
+
+      const travel = Math.max(0, content - viewW);
+      const progress = travel > 0 ? -pan.current.x / travel : 0;
+
+      thumb.style.width = `${width}px`;
+      thumb.style.left = `${progress * Math.max(0, trackW - width)}px`;
     }
 
     /**
@@ -210,6 +256,19 @@ export function useBoardPan({
        * out is named explicitly, plus the controls that own a drag of their
        * own: a slider, a select, text being selected in a field.
        */
+      /*
+       * The groove is inside the stage, so this press would otherwise start a
+       * drag as well. Checked before the opt-out below, since the scrubber
+       * sits inside something that has opted out.
+       */
+      if ((event.target as HTMLElement).closest('[data-scrub]')) {
+        cancelAnimationFrame(frame.current);
+        velocity.current = { x: 0, y: 0 };
+        scrubbing.current = true;
+        scrubTo(event.clientX);
+        return;
+      }
+
       if ((event.target as HTMLElement).closest('[data-no-pan], input, select, textarea')) return;
 
       stage!.removeEventListener('click', swallow, { capture: true });
@@ -230,6 +289,13 @@ export function useBoardPan({
     }
 
     function onPointerMove(event: PointerEvent) {
+      // On window, so a scrub carries on past either end of the groove
+      // rather than stopping the moment the pointer leaves it.
+      if (scrubbing.current) {
+        scrubTo(event.clientX);
+        return;
+      }
+
       if (!drag.current) return;
 
       const dx = event.clientX - drag.current.x;
@@ -245,6 +311,8 @@ export function useBoardPan({
     }
 
     function onPointerUp() {
+      scrubbing.current = false;
+
       if (!drag.current) return;
 
       const wasDrag = moved.current;
@@ -259,6 +327,44 @@ export function useBoardPan({
       glide();
     }
 
+    /**
+     * Jumping to a position picked off the scrubber.
+     *
+     * The whole width of the track is the whole width of the window, so this
+     * is a ratio rather than a distance: where the pointer is across the
+     * groove is where the board goes.
+     */
+    function scrubTo(clientX: number) {
+      const track = trackRef?.current;
+      if (!track) return;
+
+      const rect = track.getBoundingClientRect();
+      if (rect.width === 0) return;
+
+      const viewW = stageRef.current?.clientWidth ?? 0;
+      const travel = Math.max(0, size.current.width - viewW);
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+
+      // A flick still gliding would carry on from wherever this lands.
+      cancelAnimationFrame(frame.current);
+      velocity.current = { x: 0, y: 0 };
+
+      apply(-ratio * travel, pan.current.y);
+    }
+
+    /*
+     * A wider window can reveal blank space past the end of the board, and
+     * the thumb's width is a fraction of a track that just changed size.
+     * Re-applying the current position settles both.
+     */
+    function onResize() {
+      apply(pan.current.x, pan.current.y);
+    }
+
+    // Once now, so the thumb has a size before anything has been moved.
+    apply(pan.current.x, pan.current.y);
+
+    window.addEventListener('resize', onResize);
     stage.addEventListener('wheel', onWheel, { passive: false });
     stage.addEventListener('keydown', onKeyDown);
     stage.addEventListener('pointerdown', onPointerDown);
@@ -268,6 +374,7 @@ export function useBoardPan({
 
     return () => {
       cancelAnimationFrame(frame.current);
+      window.removeEventListener('resize', onResize);
       stage.removeEventListener('click', swallow, { capture: true });
       stage.removeEventListener('wheel', onWheel);
       stage.removeEventListener('keydown', onKeyDown);
@@ -276,7 +383,6 @@ export function useBoardPan({
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [stageRef, canvasRef, rulerRef]);
+  }, [stageRef, canvasRef, rulerRef, trackRef, thumbRef]);
 
-  return moved;
 }
