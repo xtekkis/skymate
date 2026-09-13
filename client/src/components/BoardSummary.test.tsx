@@ -152,3 +152,45 @@ describe('the destinations', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 });
+
+describe('the chips alone', () => {
+  it('keeps every destination the full card would have shown', () => {
+    show({ compact: true });
+
+    expect(screen.getByRole('button', { name: /JFK New York, 2 flights/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /CDG Paris, 1 flights/ })).toBeTruthy();
+  });
+
+  it('drops the chrome that a narrow screen has no room for', () => {
+    show({ compact: true });
+
+    expect(screen.queryByText('02 | Where today goes')).toBeNull();
+    expect(screen.queryByText(/departures at/)).toBeNull();
+    expect(screen.queryByText('local', { exact: false })).toBeNull();
+  });
+
+  it('still narrows the board when one is pressed', async () => {
+    const user = userEvent.setup();
+    const onSelect = show({ compact: true });
+
+    await user.click(screen.getByRole('button', { name: /New York/ }));
+
+    expect(onSelect).toHaveBeenCalledWith('JFK');
+  });
+
+  it('still says which one is chosen', () => {
+    show({ compact: true, selected: 'JFK', shown: 2 });
+
+    expect(screen.getByRole('button', { name: /New York/ }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
+  it('is still findable as the place the filters live', () => {
+    show({ compact: true });
+
+    // A card in the list beside it names the same city, so anything looking
+    // for a chip needs somewhere to look.
+    expect(screen.getByRole('region', { name: 'What is on the board' })).toBeTruthy();
+  });
+});

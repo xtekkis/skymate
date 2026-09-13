@@ -20,6 +20,14 @@ interface BoardSummaryProps {
   onSelect: (iata: string | null) => void;
   /** A search is in flight, so the numbers here are about to be wrong. */
   isSearching?: boolean;
+  /**
+   * The chips alone, in a row that scrolls sideways.
+   *
+   * For the narrow layout, where the card's own chrome is a screen's worth of
+   * furniture in front of the flights. The count and the window are still
+   * announced by the page's live region; what is lost is reading them.
+   */
+  compact?: boolean;
 }
 
 /** Sliced, not parsed. These are wall clocks at the airport, not instants. */
@@ -45,9 +53,47 @@ export default function BoardSummary({
   selected,
   onSelect,
   isSearching = false,
+  compact = false,
 }: BoardSummaryProps) {
   const destinations = toDestinations(flights);
   const noun = direction === 'departure' ? 'departures' : 'arrivals';
+
+  const chips = destinations.length > 0 && (
+    <div className="summary__chips">
+      {destinations.map((destination) => {
+        const on = selected === destination.iata;
+
+        return (
+          <button
+            key={destination.iata}
+            type="button"
+            className={on ? 'chip chip--on' : 'chip'}
+            style={{ '--chip-hue': hueFor(destination.iata) } as CSSProperties}
+            aria-pressed={on}
+            /* Spelled out rather than assembled from the spans below.
+               The accessible name is computed by trimming each element,
+               so a visually hidden name beside the code is announced as
+               one run-together word however it is spaced. */
+            aria-label={`${destination.iata} ${destination.name}, ${destination.count} flights`}
+            /* Pressing the chosen one again is how you get the whole
+               board back, so there is no separate clear button. */
+            onClick={() => onSelect(on ? null : destination.iata)}
+          >
+            <span className="chip__code tabular">{destination.iata}</span>
+            <span className="chip__count tabular">{destination.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <section className="summary summary--strip" aria-label="What is on the board">
+        {chips}
+      </section>
+    );
+  }
 
   return (
     <section className="summary" aria-label="What is on the board">
@@ -77,34 +123,7 @@ export default function BoardSummary({
         </p>
       </div>
 
-      {destinations.length > 0 && (
-        <div className="summary__chips">
-          {destinations.map((destination) => {
-            const on = selected === destination.iata;
-
-            return (
-              <button
-                key={destination.iata}
-                type="button"
-                className={on ? 'chip chip--on' : 'chip'}
-                style={{ '--chip-hue': hueFor(destination.iata) } as CSSProperties}
-                aria-pressed={on}
-                /* Spelled out rather than assembled from the spans below.
-                   The accessible name is computed by trimming each element,
-                   so a visually hidden name beside the code is announced as
-                   one run-together word however it is spaced. */
-                aria-label={`${destination.iata} ${destination.name}, ${destination.count} flights`}
-                /* Pressing the chosen one again is how you get the whole
-                   board back, so there is no separate clear button. */
-                onClick={() => onSelect(on ? null : destination.iata)}
-              >
-                <span className="chip__code tabular">{destination.iata}</span>
-                <span className="chip__count tabular">{destination.count}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {chips}
     </section>
   );
 }

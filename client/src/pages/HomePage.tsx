@@ -244,8 +244,24 @@ export default function HomePage() {
           <div className="board-page__under">
             {announce}
             {notices}
-            {summary}
           </div>
+
+          {/* Outside the padded region on purpose, so the row it scrolls runs
+              to both edges rather than stopping short of them. */}
+          {result && result.count > 0 && (
+            <BoardSummary
+              compact
+              flights={result.flights}
+              direction={result.direction}
+              airport={result.airport}
+              from={result.from}
+              to={result.to}
+              shown={flights.length}
+              selected={destination}
+              onSelect={setDestination}
+              isSearching={phase === 'loading'}
+            />
+          )}
 
           <ol className="board-list">
             {flights.map((flight) => (

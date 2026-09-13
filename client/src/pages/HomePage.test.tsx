@@ -352,11 +352,12 @@ describe('a window with no room for a time axis', () => {
 
     await screen.findByRole('button', { name: /BA 117/ });
 
-    // The numbered eyebrow belongs to the sidebar's stack of cards, and there
-    // is no stack here.
+    // The numbered eyebrows belong to the sidebar's stack of cards, and
+    // there is no stack here: a bar, a row of chips, and the flights.
     expect(screen.queryByText('01 | Search')).toBeNull();
+    expect(screen.queryByText('02 | Where today goes')).toBeNull();
     expect(screen.getByRole('button', { name: /LHR departures/ })).toBeTruthy();
-    expect(screen.getByText('02 | Where today goes')).toBeTruthy();
+    expect(document.querySelector('.summary--strip')).toBeTruthy();
   });
 
   it('narrows to a destination here too', async () => {
