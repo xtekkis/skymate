@@ -4,13 +4,24 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import BoardBackdrop from '../components/BoardBackdrop';
 import BoardSummary from '../components/BoardSummary';
+import FlightCard from '../components/FlightCard';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
 import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
 import { paramsFor, queryFrom, type BoardQuery } from '../components/searchQuery';
 import { useFlightSearch } from '../components/useFlightSearch';
+import { useMediaQuery } from '../components/useMediaQuery';
 import { useToast } from '../components/toastContext';
 import type { Flight, SearchParams } from '../models';
+
+/**
+ * Below this there is no room for a time axis.
+ *
+ * A board is a surface you move around in, and 366px of controls beside it
+ * leaves a phone about forty pixels of window. The same cards go in a list
+ * instead, which is a worse way to see a shape and a better way to read one.
+ */
+const NARROW = '(max-width: 759px)';
 import './HomePage.css';
 
 /** Statuses that describe the whole app rather than this one request. */
@@ -68,6 +79,7 @@ export default function HomePage() {
   const query = queryFrom(search) ?? emptyBoard();
   const params = paramsFor(query);
 
+  const narrow = useMediaQuery(NARROW);
   const { phase, result, error, status: httpStatus } = useFlightSearch(params);
 
   /*
@@ -142,11 +154,10 @@ export default function HomePage() {
     });
   }
 
-  return (
-    <main id="main" tabIndex={-1} className="board-page">
-      <BoardBackdrop />
+  const open = (flight: Flight) => navigate(detailHref(flight));
 
-      <aside className="board-page__side">
+  const controls = (
+    <aside className="board-page__side">
         {/* The board is the page. Its title is owed to a screen reader, not to
             anyone looking at a masthead that already says Skymate. */}
         <h1 className="visually-hidden">Flight board</h1>
@@ -194,14 +205,46 @@ export default function HomePage() {
           />
         )}
       </aside>
+  );
 
-      <FlightBoard
-        flights={flights}
-        date={query.date}
-        start={minutesOfLocal(params.fromLocal)}
-        windowHours={query.windowHours}
-        onOpen={(flight) => navigate(detailHref(flight))}
-      />
+  return (
+    <main
+      id="main"
+      tabIndex={-1}
+      className={narrow ? 'board-page board-page--narrow' : 'board-page'}
+    >
+      <BoardBackdrop />
+
+      {narrow ? (
+        /*
+         * One scroller around both, rather than the page itself scrolling.
+         * The backdrop is absolute inside this page, so a page that scrolled
+         * would carry it off the top and leave the cards on nothing.
+         */
+        <div className="board-page__scroll">
+          {controls}
+
+          <ol className="board-list">
+            {flights.map((flight) => (
+              <li key={flight.id}>
+                <FlightCard flight={flight} onOpen={open} />
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <>
+          {controls}
+
+          <FlightBoard
+            flights={flights}
+            date={query.date}
+            start={minutesOfLocal(params.fromLocal)}
+            windowHours={query.windowHours}
+            onOpen={open}
+          />
+        </>
+      )}
     </main>
   );
 }

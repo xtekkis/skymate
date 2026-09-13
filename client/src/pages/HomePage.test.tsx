@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HomePage from './HomePage';
 import type { Flight } from '../models';
@@ -272,5 +272,110 @@ describe('what the board takes over from the document', () => {
     show('/');
 
     expect(document.body.classList.contains('is-board')).toBe(true);
+  });
+});
+
+describe('a window with no room for a time axis', () => {
+  const realMatchMedia = window.matchMedia;
+
+  /** jsdom answers no media query, so a narrow window has to be said. */
+  function width(narrow: boolean) {
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: narrow && query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+  }
+
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+  });
+
+  const board = () => document.querySelector('.stage');
+  const list = () => document.querySelector('.board-list');
+
+  function withFlights() {
+    flights.mockResolvedValue({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+      count: 2,
+      flights: [flight('BA 117'), flight('BA 175')],
+    });
+  }
+
+  it('shows the board when there is room for one', async () => {
+    width(false);
+    withFlights();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+
+    expect(board()).toBeTruthy();
+    expect(list()).toBeNull();
+  });
+
+  it('shows a list instead when there is not', async () => {
+    width(true);
+    withFlights();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+
+    // 366px of controls beside a time axis leaves a phone nothing to read.
+    expect(list()).toBeTruthy();
+    expect(board()).toBeNull();
+  });
+
+  it('lists every flight the board would have carried', async () => {
+    width(true);
+    withFlights();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+
+    expect(list()!.querySelectorAll('li')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /BA 175/ })).toBeTruthy();
+  });
+
+  it('keeps the search and the summary', async () => {
+    width(true);
+    withFlights();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+
+    expect(screen.getByText('01 | Search')).toBeTruthy();
+    expect(screen.getByText('02 | Where today goes')).toBeTruthy();
+  });
+
+  it('narrows to a destination here too', async () => {
+    width(true);
+    flights.mockResolvedValue({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+      count: 2,
+      flights: [
+        { ...flight('BA 117'), id: 'a', counterpart: { iata: 'JFK', name: 'Kennedy', municipality: 'New York' } },
+        { ...flight('BA 175'), id: 'b', counterpart: { iata: 'CDG', name: 'De Gaulle', municipality: 'Paris' } },
+      ],
+    });
+
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /New York/ }));
+
+    expect(list()!.querySelectorAll('li')).toHaveLength(1);
   });
 });
