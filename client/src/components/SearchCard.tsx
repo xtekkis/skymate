@@ -15,6 +15,13 @@ interface SearchCardProps {
   initial?: SearchParams | null;
   /** Owned by the page, since the page owns the request. */
   isSearching?: boolean;
+  /**
+   * Without the panel around it, for somewhere that is already a panel.
+   *
+   * The eyebrow goes too: "01 | Search" numbers the cards in the sidebar, and
+   * there is no second card to be the first of inside a sheet.
+   */
+  bare?: boolean;
 }
 
 type FieldName = 'airport' | 'date' | 'time';
@@ -45,7 +52,12 @@ function validate(values: { airport: string; date: string; time: string }): Erro
  * six columns: labels overlapping, inputs twenty pixels wide. Fields stack
  * here because the sidebar is narrow, not because the window is.
  */
-export default function SearchCard({ onSearch, isSearching = false, initial }: SearchCardProps) {
+export default function SearchCard({
+  onSearch,
+  isSearching = false,
+  initial,
+  bare = false,
+}: SearchCardProps) {
   const restored = queryFrom(initial);
 
   const [airport, setAirport] = useState(restored?.airport ?? '');
@@ -97,8 +109,12 @@ export default function SearchCard({ onSearch, isSearching = false, initial }: S
   }
 
   return (
-    <form className="searchcard" onSubmit={handleSubmit} noValidate>
-      <span className="searchcard__eyebrow">01 | Search</span>
+    <form
+      className={bare ? 'searchcard searchcard--bare' : 'searchcard'}
+      onSubmit={handleSubmit}
+      noValidate
+    >
+      {!bare && <span className="searchcard__eyebrow">01 | Search</span>}
 
       <AirportInput
         value={airport}

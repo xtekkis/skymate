@@ -345,14 +345,17 @@ describe('a window with no room for a time axis', () => {
     expect(screen.getByRole('button', { name: /BA 175/ })).toBeTruthy();
   });
 
-  it('keeps the search and the summary', async () => {
+  it('folds the search into a bar rather than a card', async () => {
     width(true);
     withFlights();
     show(SEARCH);
 
     await screen.findByRole('button', { name: /BA 117/ });
 
-    expect(screen.getByText('01 | Search')).toBeTruthy();
+    // The numbered eyebrow belongs to the sidebar's stack of cards, and there
+    // is no stack here.
+    expect(screen.queryByText('01 | Search')).toBeNull();
+    expect(screen.getByRole('button', { name: /LHR departures/ })).toBeTruthy();
     expect(screen.getByText('02 | Where today goes')).toBeTruthy();
   });
 
@@ -374,7 +377,9 @@ describe('a window with no room for a time axis', () => {
     show(SEARCH);
 
     await screen.findByRole('button', { name: /BA 117/ });
-    await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /New York/ }));
+    // Scoped to the summary: a card in the list names the same city.
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    await user.click(within(summary).getByRole('button', { name: /New York/ }));
 
     expect(list()!.querySelectorAll('li')).toHaveLength(1);
   });

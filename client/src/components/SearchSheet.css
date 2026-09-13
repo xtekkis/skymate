@@ -1,0 +1,48 @@
+/*
+ * The search, folded away.
+ *
+ * Only ever rendered in the narrow layout, where the full card is most of the
+ * first screen.
+ */
+.sheet {
+  border-bottom: 1px solid var(--border);
+  background: oklch(0.17 0.015 262 / 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.sheet__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  /* 44px, which is the smallest a finger reliably lands on. */
+  height: 44px;
+  padding: 0 var(--space-4);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet__summary svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.sheet__code {
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+/* Ellipsis rather than a wrap, so the row stays one row on a small screen. */
+.sheet__what {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet__panel {
+  padding: 0 var(--space-4) var(--space-4);
+}

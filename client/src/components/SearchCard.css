@@ -68,3 +68,11 @@
   width: 100%;
   margin-top: var(--space-2);
 }
+
+/* Inside something that is already a panel, the card is just its fields. */
+.searchcard--bare {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}

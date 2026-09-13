@@ -7,6 +7,7 @@ import BoardSummary from '../components/BoardSummary';
 import FlightCard from '../components/FlightCard';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
+import SearchSheet from '../components/SearchSheet';
 import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
 import { paramsFor, queryFrom, type BoardQuery } from '../components/searchQuery';
 import { useFlightSearch } from '../components/useFlightSearch';
@@ -156,56 +157,64 @@ export default function HomePage() {
 
   const open = (flight: Flight) => navigate(detailHref(flight));
 
-  const controls = (
-    <aside className="board-page__side">
-        {/* The board is the page. Its title is owed to a screen reader, not to
-            anyone looking at a masthead that already says Skymate. */}
-        <h1 className="visually-hidden">Flight board</h1>
-
-        <SearchCard onSearch={handleSearch} isSearching={phase === 'loading'} initial={search} />
-
-        {/* Always mounted. A live region that appears at the same moment as its
-            text is often missed, because there was nothing there to change. */}
-        <p className="visually-hidden" role="status">
-          {announcement}
-        </p>
-
-        {phase === 'error' && (
-          <div className="notice notice--error" role="alert">
-            <WarningCircle size={20} weight="fill" aria-hidden="true" />
-            <div>
-              <p className="notice__title">Search failed</p>
-              <p className="notice__body">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {phase === 'done' && result?.count === 0 && (
-          <div className="notice">
-            <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
-            <div>
-              <p className="notice__title">No flights in that window</p>
-              <p className="notice__body">
-                Try a longer window, a different time of day, or check the airport code.
-              </p>
-            </div>
-          </div>
-        )}
-        {result && result.count > 0 && (
-          <BoardSummary
-            flights={result.flights}
-            direction={result.direction}
-            airport={result.airport}
-            from={result.from}
-            to={result.to}
-            shown={flights.length}
-            selected={destination}
-            onSelect={setDestination}
-            isSearching={phase === 'loading'}
-          />
-        )}
-      </aside>
+  /*
+   * The parts both layouts show, named once.
+   *
+   * The wide one stacks them in a sidebar beside the board. The narrow one
+   * puts the search across the top as a bar that folds away, because the full
+   * card is most of a phone's first screen and the flights are the page.
+   */
+  const announce = (
+    // Always mounted. A live region that appears at the same moment as its
+    // text is often missed, because there was nothing there to change.
+    <p className="visually-hidden" role="status">
+      {announcement}
+    </p>
   );
+
+  const notices = (
+    <>
+      {phase === 'error' && (
+        <div className="notice notice--error" role="alert">
+          <WarningCircle size={20} weight="fill" aria-hidden="true" />
+          <div>
+            <p className="notice__title">Search failed</p>
+            <p className="notice__body">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {phase === 'done' && result?.count === 0 && (
+        <div className="notice">
+          <AirplaneTilt size={20} weight="fill" aria-hidden="true" />
+          <div>
+            <p className="notice__title">No flights in that window</p>
+            <p className="notice__body">
+              Try a longer window, a different time of day, or check the airport code.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const summary = result && result.count > 0 && (
+    <BoardSummary
+      flights={result.flights}
+      direction={result.direction}
+      airport={result.airport}
+      from={result.from}
+      to={result.to}
+      shown={flights.length}
+      selected={destination}
+      onSelect={setDestination}
+      isSearching={phase === 'loading'}
+    />
+  );
+
+  // The board is the page. Its title is owed to a screen reader, not to
+  // anyone looking at a masthead that already says Skymate.
+  const title = <h1 className="visually-hidden">Flight board</h1>;
 
   return (
     <main
@@ -222,7 +231,21 @@ export default function HomePage() {
          * would carry it off the top and leave the cards on nothing.
          */
         <div className="board-page__scroll">
-          {controls}
+          {title}
+
+          <SearchSheet
+            airport={query.airport}
+            direction={query.direction}
+            onSearch={handleSearch}
+            initial={search}
+            isSearching={phase === 'loading'}
+          />
+
+          <div className="board-page__under">
+            {announce}
+            {notices}
+            {summary}
+          </div>
 
           <ol className="board-list">
             {flights.map((flight) => (
@@ -234,7 +257,19 @@ export default function HomePage() {
         </div>
       ) : (
         <>
-          {controls}
+          <aside className="board-page__side">
+            {title}
+
+            <SearchCard
+              onSearch={handleSearch}
+              isSearching={phase === 'loading'}
+              initial={search}
+            />
+
+            {announce}
+            {notices}
+            {summary}
+          </aside>
 
           <FlightBoard
             flights={flights}
