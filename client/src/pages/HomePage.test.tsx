@@ -385,3 +385,89 @@ describe('a window with no room for a time axis', () => {
     expect(list()!.querySelectorAll('li')).toHaveLength(1);
   });
 });
+
+describe('opening a flight', () => {
+  function twoFlights() {
+    flights.mockResolvedValue({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+      count: 2,
+      flights: [
+        { ...flight('BA 117'), id: 'a', counterpart: { iata: 'JFK', name: 'Kennedy', municipality: 'New York' } },
+        { ...flight('BA 175'), id: 'b', counterpart: { iata: 'CDG', name: 'De Gaulle', municipality: 'Paris' } },
+      ],
+    });
+  }
+
+  const card = (name: RegExp) =>
+    within(document.querySelector<HTMLElement>('.stage')!).getByRole('button', { name });
+
+  it('opens over the board rather than leaving it', async () => {
+    twoFlights();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(card(/BA 117/));
+
+    // Pressing a card used to go to another page. The board is the page now,
+    // so the flight comes to it.
+    expect(screen.getByRole('dialog', { name: 'BA 117' })).toBeTruthy();
+    expect(document.querySelector('.stage')).toBeTruthy();
+  });
+
+  it('marks the card whose flight is open', async () => {
+    twoFlights();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(card(/BA 117/));
+
+    expect(card(/BA 117/).getAttribute('aria-current')).toBe('true');
+    expect(card(/BA 175/).getAttribute('aria-current')).toBeNull();
+  });
+
+  it('swaps to another flight without closing first', async () => {
+    twoFlights();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(card(/BA 117/));
+    await user.click(card(/BA 175/));
+
+    expect(screen.getByRole('dialog', { name: 'BA 175' })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: 'BA 117' })).toBeNull();
+  });
+
+  it('closes again', async () => {
+    twoFlights();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(card(/BA 117/));
+    await user.click(screen.getByRole('button', { name: 'Close flight' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('stays open when the board is narrowed to somewhere else', async () => {
+    twoFlights();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await screen.findByRole('button', { name: /BA 117/ });
+    await user.click(card(/BA 117/));
+
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    await user.click(within(summary).getByRole('button', { name: /Paris/ }));
+
+    // Narrowing is a view over the same flights. The one being read has not
+    // gone anywhere, it is only off the board for now.
+    expect(screen.getByRole('dialog', { name: 'BA 117' })).toBeTruthy();
+  });
+});

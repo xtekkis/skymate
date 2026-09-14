@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import BoardBackdrop from '../components/BoardBackdrop';
 import BoardSummary from '../components/BoardSummary';
 import FlightCard from '../components/FlightCard';
+import FlightDetail from '../components/FlightDetail';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
 import SearchSheet from '../components/SearchSheet';
@@ -61,15 +62,8 @@ function emptyBoard(): BoardQuery {
   return { airport: '', direction: 'departure', date: todayLocal(), time: '08:00', windowHours: 12 };
 }
 
-/** The number is the real link, so opening a card goes where the number goes. */
-function detailHref(flight: Flight) {
-  const date = flight.scheduledLocal?.slice(0, 10) ?? flight.scheduledTime.slice(0, 10);
-  return `/flight/${encodeURIComponent(flight.number)}?date=${date}`;
-}
-
 export default function HomePage() {
   const showToast = useToast();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   /*
@@ -93,8 +87,20 @@ export default function HomePage() {
    */
   const [destination, setDestination] = useState<string | null>(null);
 
-  // A filter belongs to the results it was chosen from.
-  useEffect(() => setDestination(null), [result]);
+  /*
+   * The flight whose panel is open, by id rather than by object.
+   *
+   * An id survives the list being re-filtered underneath it, and it lets the
+   * panel close on its own when a new search no longer contains that flight,
+   * instead of showing a card that has left the board.
+   */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // A filter belongs to the results it was chosen from, and so does an open flight.
+  useEffect(() => {
+    setDestination(null);
+    setSelectedId(null);
+  }, [result]);
 
   const all = result?.flights ?? [];
   const flights = destination
@@ -155,7 +161,12 @@ export default function HomePage() {
     });
   }
 
-  const open = (flight: Flight) => navigate(detailHref(flight));
+  const open = (flight: Flight) => setSelectedId(flight.id);
+  const close = useCallback(() => setSelectedId(null), []);
+
+  // Looked up in everything fetched, not only what is shown, so narrowing to a
+  // destination does not snatch away a flight that is being read.
+  const selected = result?.flights.find((flight) => flight.id === selectedId) ?? null;
 
   /*
    * The parts both layouts show, named once.
@@ -266,7 +277,7 @@ export default function HomePage() {
           <ol className="board-list">
             {flights.map((flight) => (
               <li key={flight.id}>
-                <FlightCard flight={flight} onOpen={open} />
+                <FlightCard flight={flight} onOpen={open} selected={flight.id === selectedId} />
               </li>
             ))}
           </ol>
@@ -293,8 +304,12 @@ export default function HomePage() {
             start={minutesOfLocal(params.fromLocal)}
             windowHours={query.windowHours}
             onOpen={open}
+            selectedId={selectedId}
           />
         </>
+      )}
+      {selected && result && (
+        <FlightDetail flight={selected} airport={result.airport} onClose={close} />
       )}
     </main>
   );
