@@ -4,6 +4,7 @@ import { AirplaneLanding, AirplaneTakeoff, ArrowRight, X } from '@phosphor-icons
 
 import type { Flight } from '../models';
 import { STATUS_LABEL, STATUS_TONE } from './flightStatus';
+import { progressOf } from './flightProgress';
 import { localTime, revisedTime } from './flightTimes';
 import './FlightDetail.css';
 
@@ -36,6 +37,7 @@ function detailHref(flight: Flight) {
  */
 export default function FlightDetail({ flight, airport, onClose }: FlightDetailProps) {
   const titleId = useId();
+  const progressId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const outbound = flight.direction === 'departure';
@@ -73,6 +75,7 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
 
   const scheduled = localTime(flight.scheduledLocal);
   const revised = revisedTime(flight);
+  const progress = progressOf(flight);
 
   /*
    * Only what the board actually carries. The design this comes from had a
@@ -170,6 +173,53 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
           </div>
         ))}
       </dl>
+
+      <section className="progress" aria-labelledby={progressId}>
+        <h3 className="progress__title" id={progressId}>
+          Progress
+        </h3>
+
+        {progress.kind === 'stopped' ? (
+          /* Said outright. A row of unlit stages would read as "not started
+             yet" for a flight that is never going to start. */
+          <p className={`progress__stopped progress__stopped--${progress.tone}`}>
+            {progress.label}
+          </p>
+        ) : (
+          <ol className="progress__steps">
+            {progress.steps.map((step, index) => (
+              <li
+                key={step.label}
+                className={step.reached ? 'step step--reached' : 'step'}
+                aria-current={index === progress.current ? 'step' : undefined}
+              >
+                <span className="step__dot" aria-hidden="true" />
+
+                <span className="step__label">
+                  {step.label}
+                  {/* The dot is the only visible sign, and it is colour. */}
+                  <span className="visually-hidden">{step.reached ? ', done' : ', not yet'}</span>
+                </span>
+
+                {step.time && (
+                  <span className="step__time tabular">
+                    {step.time.revised && <span className="visually-hidden">scheduled </span>}
+                    <span className={step.time.revised ? 'fact__was' : undefined}>
+                      {step.time.scheduled}
+                    </span>
+                    {step.time.revised && (
+                      <>
+                        <span className="visually-hidden">, revised to </span>
+                        <span className="fact__revised">{step.time.revised}</span>
+                      </>
+                    )}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <Link className="detail__more" to={detailHref(flight)}>
         Full flight details

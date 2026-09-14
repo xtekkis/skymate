@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -205,5 +205,56 @@ describe('the facts', () => {
 
     // The design had a block time here. There is no such field.
     expect(screen.queryByText(/block time/i)).toBeNull();
+  });
+});
+
+describe('the progress', () => {
+  const stages = () =>
+    within(screen.getByRole('region', { name: 'Progress' })).queryAllByRole('listitem');
+
+  it('is a section a screen reader can jump to', () => {
+    show();
+
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeTruthy();
+  });
+
+  it('says which stages are done in words, not only in colour', () => {
+    show({ status: 'Boarding' });
+
+    const [checkIn, boarding, gate] = stages();
+    expect(checkIn.textContent).toContain('done');
+    expect(boarding.textContent).toContain('done');
+    expect(gate.textContent).toContain('not yet');
+  });
+
+  it('marks where the flight is now', () => {
+    show({ status: 'Boarding' });
+
+    const current = stages().filter((stage) => stage.getAttribute('aria-current') === 'step');
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toContain('Boarding');
+  });
+
+  it('puts the real departure time on the last stage', () => {
+    show({ status: 'Expected', revisedLocal: '2026-09-01T09:40+01:00' });
+
+    expect(stages().at(-1)?.textContent).toContain('scheduled 09:00, revised to 09:40');
+  });
+
+  it('shows no time beside boarding or the gate', () => {
+    show({ status: 'GateClosed' });
+
+    const [checkIn, boarding, gate] = stages();
+    for (const stage of [checkIn, boarding, gate]) {
+      expect(stage.textContent).not.toMatch(/\d{2}:\d{2}/);
+    }
+  });
+
+  it('says a cancelled flight is cancelled instead of listing stages', () => {
+    show({ status: 'Canceled' });
+
+    const region = screen.getByRole('region', { name: 'Progress' });
+    expect(region.textContent).toContain('Cancelled');
+    expect(stages()).toHaveLength(0);
   });
 });
