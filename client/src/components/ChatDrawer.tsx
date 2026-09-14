@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUp, ChatCircleDots, WarningCircle, X } from '@phosphor-icons/react';
 
 import type { Message } from '../models';
+import { useAssistant } from './assistantContext';
 import { useToast } from './toastContext';
 import { errorStatus, messageFromError, sendChat } from '../services/api';
 import './ChatDrawer.css';
@@ -57,6 +58,7 @@ function now() {
  */
 export default function ChatDrawer() {
   const showToast = useToast();
+  const { request } = useAssistant();
   const [searchParams] = useSearchParams();
 
   const [open, setOpen] = useState(false);
@@ -84,11 +86,11 @@ export default function ChatDrawer() {
   useEffect(() => () => window.clearTimeout(accentTimer.current), []);
 
   /** Opens with the accent already on: it is the button's own colour. */
-  function show() {
+  const show = useCallback(() => {
     window.clearTimeout(accentTimer.current);
     setAccent(true);
     setOpen(true);
-  }
+  }, []);
 
   /**
    * Closes, and lets the colour arrive afterwards.
@@ -105,6 +107,25 @@ export default function ChatDrawer() {
     window.clearTimeout(accentTimer.current);
     accentTimer.current = window.setTimeout(() => setAccent(true), reduceMotion ? 0 : MORPH_MS);
   }, [reduceMotion]);
+
+  /*
+   * A question handed over from elsewhere in the app, typed in and left there.
+   *
+   * Never sent from here. Every message spends part of a fixed monthly
+   * allowance, so the reader reads it, changes it if they like, and presses
+   * send themselves.
+   *
+   * The provider hands over a new request object for every ask, even the same
+   * question twice, so depending on the object is what makes asking twice
+   * open it twice.
+   */
+  useEffect(() => {
+    if (!request) return;
+
+    setDraft(request.draft);
+    setError(null);
+    show();
+  }, [request, show]);
 
   /*
    * The airport the board is showing, read from the URL rather than passed

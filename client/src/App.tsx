@@ -5,6 +5,7 @@ import BoardHeader from './components/BoardHeader';
 import ChatDrawer from './components/ChatDrawer';
 import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/Header';
+import { AssistantProvider } from './components/AssistantProvider';
 import { ToastProvider } from './components/ToastProvider';
 import FlightPage from './pages/FlightPage';
 import HomePage from './pages/HomePage';
@@ -84,6 +85,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
+        {/* Around both the pages and the drawer, since a page asks and the
+            drawer answers, and neither is inside the other. */}
+        <AssistantProvider>
         <RouteHeader />
         <FocusMainOnNavigation />
         <Content />
@@ -91,6 +95,7 @@ export default function App() {
         {/* Outside Content, so a page that throws does not take the assistant
             down with it, and so the conversation survives navigating. */}
         <ChatDrawer />
+        </AssistantProvider>
       </ToastProvider>
     </BrowserRouter>
   );

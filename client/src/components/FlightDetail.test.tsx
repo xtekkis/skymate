@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import FlightDetail from './FlightDetail';
+import { AssistantContext } from './assistantContext';
 import type { Flight } from '../models';
 
 const flight = (overrides: Partial<Flight> = {}): Flight => ({
@@ -256,5 +257,68 @@ describe('the progress', () => {
     const region = screen.getByRole('region', { name: 'Progress' });
     expect(region.textContent).toContain('Cancelled');
     expect(stages()).toHaveLength(0);
+  });
+});
+
+describe('asking the assistant about it', () => {
+  function showAsking(overrides: Partial<Flight> = {}) {
+    const ask = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask }}>
+          <FlightDetail flight={flight(overrides)} airport="LHR" onClose={vi.fn()} />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    return { ask, user: userEvent.setup() };
+  }
+
+  const button = () => screen.getByRole('button', { name: 'Ask the assistant about this flight' });
+
+  it('hands the assistant a question with the flight written into it', async () => {
+    const { ask, user } = showAsking({ terminal: '5', gate: 'A15', status: 'Boarding' });
+
+    await user.click(button());
+
+    expect(ask).toHaveBeenCalledWith(
+      'I am looking at BA 117, British Airways from LHR to New York (JFK), scheduled 09:00 local time, boarding, terminal 5, gate A15. What should I know about this flight?',
+    );
+  });
+
+  it('says whose clock the time is on', async () => {
+    const { ask, user } = showAsking();
+
+    await user.click(button());
+
+    // "09:00" alone gives a model no way of knowing which zone it is in.
+    expect(ask.mock.calls[0][0]).toContain('local time');
+  });
+
+  it('includes a revision when there is one', async () => {
+    const { ask, user } = showAsking({ revisedLocal: '2026-09-01T09:40+01:00' });
+
+    await user.click(button());
+
+    expect(ask.mock.calls[0][0]).toContain('scheduled 09:00, now 09:40 local time');
+  });
+
+  it('leaves out a gate that has not been published rather than guessing one', async () => {
+    const { ask, user } = showAsking({ gate: undefined, terminal: undefined });
+
+    await user.click(button());
+
+    // The assistant cannot look flights up. What this sentence tells it is
+    // what it knows, so the sentence must not invent anything.
+    expect(ask.mock.calls[0][0]).not.toMatch(/gate|terminal/i);
+  });
+
+  it('puts an arrival the right way round', async () => {
+    const { ask, user } = showAsking({ direction: 'arrival' });
+
+    await user.click(button());
+
+    expect(ask.mock.calls[0][0]).toContain('from New York (JFK) to LHR');
   });
 });

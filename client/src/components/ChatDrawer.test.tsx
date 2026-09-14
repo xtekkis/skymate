@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AssistantProvider } from './AssistantProvider';
 import ChatDrawer from './ChatDrawer';
+import { useAssistant } from './assistantContext';
 import { sendChat } from '../services/api';
 
 vi.mock('../services/api', async (importOriginal) => ({
@@ -233,5 +235,72 @@ describe('when the answer does not arrive', () => {
     // The question belongs in the conversation once. Retrying is the same
     // question again, not a second one.
     expect(screen.getAllByText(QUESTION)).toHaveLength(1);
+  });
+});
+
+describe('a question handed over from elsewhere', () => {
+  /** Stands in for the flight panel: something outside the drawer that asks. */
+  function Asker({ draft }: { draft: string }) {
+    const { ask } = useAssistant();
+    return (
+      <button type="button" onClick={() => ask(draft)}>
+        ask elsewhere
+      </button>
+    );
+  }
+
+  function showWithAsker(draft = 'What should I know about BA 117?') {
+    render(
+      <MemoryRouter>
+        <AssistantProvider>
+          <Asker draft={draft} />
+          <ChatDrawer />
+        </AssistantProvider>
+      </MemoryRouter>,
+    );
+    return userEvent.setup();
+  }
+
+  const elsewhere = () => screen.getByRole('button', { name: 'ask elsewhere' });
+
+  it('opens the drawer with the question already typed', async () => {
+    const user = showWithAsker();
+
+    await user.click(elsewhere());
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect((box() as HTMLTextAreaElement).value).toBe('What should I know about BA 117?');
+  });
+
+  it('leaves the sending to the reader', async () => {
+    const user = showWithAsker();
+
+    await user.click(elsewhere());
+
+    // Every message spends part of a fixed monthly allowance. A button that
+    // sent on someone's behalf would be spending money they had not chosen to.
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it('puts the cursor in the box, ready to change or send', async () => {
+    const user = showWithAsker();
+
+    await user.click(elsewhere());
+
+    await waitFor(() => expect(document.activeElement).toBe(box()));
+  });
+
+  it('opens again when the same question is asked a second time', async () => {
+    const user = showWithAsker();
+
+    await user.click(elsewhere());
+    await user.click(screen.getByRole('button', { name: 'Close travel assistant' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await user.click(elsewhere());
+
+    // Same text, but a second press. Treating it as no change would leave
+    // the button apparently broken after the first use.
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });

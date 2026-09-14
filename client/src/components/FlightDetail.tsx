@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { AirplaneLanding, AirplaneTakeoff, ArrowRight, X } from '@phosphor-icons/react';
+import { AirplaneLanding, AirplaneTakeoff, ArrowRight, ChatCircleDots, X } from '@phosphor-icons/react';
 
 import type { Flight } from '../models';
 import { STATUS_LABEL, STATUS_TONE } from './flightStatus';
+import { useAssistant } from './assistantContext';
 import { progressOf } from './flightProgress';
 import { localTime, revisedTime } from './flightTimes';
 import './FlightDetail.css';
@@ -25,6 +26,40 @@ function detailHref(flight: Flight) {
 }
 
 /**
+ * A first question about a flight, with everything the board knows about it
+ * written into it.
+ *
+ * The assistant has no way to look flights up, on purpose: a lookup would
+ * spend the flight data allowance as well as the chat one. So what it knows
+ * is what this sentence tells it, and the sentence only says what is known.
+ * A gate that has not been published is left out rather than guessed at.
+ */
+function questionAbout(flight: Flight, airport: string) {
+  const other = flight.counterpart;
+  const place = other.municipality ? `${other.municipality} (${other.iata})` : other.iata;
+  const route =
+    flight.direction === 'departure' ? `from ${airport} to ${place}` : `from ${place} to ${airport}`;
+
+  const scheduled = localTime(flight.scheduledLocal);
+  const revised = revisedTime(flight);
+  // Local, said outright. A model reading "09:00" has no way to know whose.
+  const when = revised
+    ? `scheduled ${scheduled}, now ${revised} local time`
+    : `scheduled ${scheduled} local time`;
+
+  const facts = [
+    when,
+    STATUS_LABEL[flight.status].toLowerCase(),
+    flight.terminal && `terminal ${flight.terminal}`,
+    flight.gate && `gate ${flight.gate}`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  return `I am looking at ${flight.number}, ${flight.airline} ${route}, ${facts}. What should I know about this flight?`;
+}
+
+/**
  * One flight, opened over the board.
  *
  * Built entirely from the card that was pressed. The board already fetched
@@ -36,6 +71,7 @@ function detailHref(flight: Flight) {
  * swaps what is shown rather than having to close this first.
  */
 export default function FlightDetail({ flight, airport, onClose }: FlightDetailProps) {
+  const { ask } = useAssistant();
   const titleId = useId();
   const progressId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -220,6 +256,15 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
           </ol>
         )}
       </section>
+
+      <button
+        type="button"
+        className="detail__ask"
+        onClick={() => ask(questionAbout(flight, airport))}
+      >
+        <ChatCircleDots size={18} weight="bold" aria-hidden="true" />
+        Ask the assistant about this flight
+      </button>
 
       <Link className="detail__more" to={detailHref(flight)}>
         Full flight details
