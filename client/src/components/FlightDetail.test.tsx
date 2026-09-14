@@ -134,3 +134,76 @@ describe('where focus goes', () => {
     opener.remove();
   });
 });
+
+describe('the facts', () => {
+  /** A tile's value, found by its label. */
+  function fact(label: string) {
+    const term = screen.getByText(label, { selector: 'dt' });
+    return term.nextElementSibling as HTMLElement;
+  }
+
+  it('shows the scheduled time off the airport clock', () => {
+    show();
+
+    expect(fact('Scheduled').textContent).toBe('09:00');
+  });
+
+  it('reads a revised time as two facts rather than two numbers', () => {
+    show({ revisedLocal: '2026-09-01T09:40+01:00' });
+
+    // "09:00 09:40" on its own is the one thing nobody can afford to misread.
+    expect(fact('Scheduled').textContent).toBe('Scheduled 09:00, revised to 09:40');
+  });
+
+  it('does not announce a revision that never happened', () => {
+    show({ revisedLocal: '2026-09-01T09:00+01:00' });
+
+    expect(fact('Scheduled').textContent).toBe('09:00');
+  });
+
+  it('says the status in words and gives it its tone', () => {
+    show({ status: 'Delayed' });
+
+    expect(fact('Status').textContent).toBe('Delayed');
+    expect(fact('Status').className).toContain('fact__value--warn');
+  });
+
+  it('names the terminal the way the board does', () => {
+    show({ terminal: '5' });
+
+    expect(fact('Terminal').textContent).toBe('T5');
+  });
+
+  it('keeps a tile for a gate that has not been published', () => {
+    show({ gate: undefined });
+
+    // Gates publish close to departure. A tile that vanished would read as a
+    // layout fault rather than as a fact about the flight.
+    expect(fact('Gate').textContent).toBe('Not published');
+  });
+
+  it('shows the aircraft, which the board does carry', () => {
+    show({ aircraft: 'Boeing 777-300ER' });
+
+    expect(fact('Aircraft').textContent).toBe('Boeing 777-300ER');
+  });
+
+  it('shows a check in desk for a departure', () => {
+    show({ checkInDesk: '12' });
+
+    expect(fact('Check in').textContent).toBe('Desk 12');
+  });
+
+  it('has no check in for an arrival, whose desk was at the other end', () => {
+    show({ direction: 'arrival', checkInDesk: '12' });
+
+    expect(screen.queryByText('Check in', { selector: 'dt' })).toBeNull();
+  });
+
+  it('shows nothing the schedule does not carry', () => {
+    show();
+
+    // The design had a block time here. There is no such field.
+    expect(screen.queryByText(/block time/i)).toBeNull();
+  });
+});

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { AirplaneLanding, AirplaneTakeoff, ArrowRight, X } from '@phosphor-icons/react';
 
 import type { Flight } from '../models';
+import { STATUS_LABEL, STATUS_TONE } from './flightStatus';
+import { localTime, revisedTime } from './flightTimes';
 import './FlightDetail.css';
 
 interface FlightDetailProps {
@@ -69,6 +71,29 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
 
   const Plane = outbound ? AirplaneTakeoff : AirplaneLanding;
 
+  const scheduled = localTime(flight.scheduledLocal);
+  const revised = revisedTime(flight);
+
+  /*
+   * Only what the board actually carries. The design this comes from had a
+   * block time here, which the schedule does not include, so the tile went to
+   * the aircraft instead, which it does.
+   *
+   * A missing value keeps its tile and says so. Gates publish close to
+   * departure, so a flight hours out genuinely has none, and a tile that
+   * vanished would read as a layout fault rather than as a fact.
+   *
+   * Check in is a departures thing: an arrival's desk was at the other end.
+   */
+  const facts: { label: string; value: string | null }[] = [
+    { label: 'Terminal', value: flight.terminal ? `T${flight.terminal}` : null },
+    { label: 'Gate', value: flight.gate ?? null },
+    ...(outbound
+      ? [{ label: 'Check in', value: flight.checkInDesk ? `Desk ${flight.checkInDesk}` : null }]
+      : []),
+    { label: 'Aircraft', value: flight.aircraft ?? null },
+  ];
+
   return (
     <aside className="detail" role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <header className="detail__head">
@@ -112,6 +137,39 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
           {to.city && <p className="detail__city">{to.city}</p>}
         </div>
       </div>
+
+      <dl className="detail__facts">
+        <div className="fact">
+          <dt className="fact__label">Scheduled</dt>
+          <dd className="fact__value tabular">
+            {/* The same two facts the card reads out, for the same reason. */}
+            {revised && <span className="visually-hidden">Scheduled </span>}
+            <span className={revised ? 'fact__was' : undefined}>{scheduled}</span>
+            {revised && (
+              <>
+                <span className="visually-hidden">, revised to </span>
+                <span className="fact__revised">{revised}</span>
+              </>
+            )}
+          </dd>
+        </div>
+
+        <div className="fact">
+          <dt className="fact__label">Status</dt>
+          <dd className={`fact__value fact__value--${STATUS_TONE[flight.status]}`}>
+            {STATUS_LABEL[flight.status]}
+          </dd>
+        </div>
+
+        {facts.map((fact) => (
+          <div className="fact" key={fact.label}>
+            <dt className="fact__label">{fact.label}</dt>
+            <dd className={fact.value ? 'fact__value' : 'fact__value fact__value--missing'}>
+              {fact.value ?? 'Not published'}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       <Link className="detail__more" to={detailHref(flight)}>
         Full flight details

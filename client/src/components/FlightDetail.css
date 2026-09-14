@@ -119,6 +119,66 @@
   background: linear-gradient(to right, var(--border-strong), var(--accent));
 }
 
+/* Two columns of small facts, each in its own sunken tile. */
+.detail__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.fact {
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+/*
+ * An arrival has one tile fewer, since its check in desk was at the other
+ * end. The one left over takes the whole row rather than sitting alone.
+ */
+.fact:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.fact__label {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+.fact__value {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-base);
+  color: var(--text);
+  /* An aircraft name is the long one, and it wraps rather than overflowing. */
+  overflow-wrap: anywhere;
+}
+
+.fact__value--ok { color: var(--ok); }
+.fact__value--info { color: var(--info); }
+.fact__value--warn { color: var(--warn); }
+.fact__value--danger { color: var(--danger); }
+.fact__value--muted { color: var(--text-muted); }
+
+/* Still in the tile, and quieter, so its absence is read as a fact. */
+.fact__value--missing {
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}
+
+.fact__was {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.fact__revised {
+  margin-left: 0.4rem;
+  color: var(--accent);
+}
+
 .detail__more {
   display: inline-flex;
   align-items: center;

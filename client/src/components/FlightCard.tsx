@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 
 import type { Flight } from '../models';
 import { STATUS_LABEL, STATUS_TONE, isBoarding } from './flightStatus';
+import { localTime, revisedTime } from './flightTimes';
 import './FlightCard.css';
 
 interface FlightCardProps {
@@ -11,15 +12,6 @@ interface FlightCardProps {
   onOpen: (flight: Flight) => void;
   /** Where the board puts it. Left unset, the card is simply full width. */
   style?: CSSProperties;
-}
-
-/**
- * Reads the wall-clock portion straight off the airport-local string. Parsing
- * it into a Date would re-render it in the browser's timezone, which is the
- * bug scheduledLocal exists to avoid.
- */
-function localTime(iso?: string) {
-  return iso ? iso.slice(11, 16) : '--:--';
 }
 
 /**
@@ -44,10 +36,7 @@ function whereToGo(flight: Flight) {
  */
 export default function FlightCard({ flight, selected = false, onOpen, style }: FlightCardProps) {
   const scheduled = localTime(flight.scheduledLocal);
-  const revised =
-    flight.revisedLocal && flight.revisedLocal !== flight.scheduledLocal
-      ? localTime(flight.revisedLocal)
-      : null;
+  const revised = revisedTime(flight);
 
   const classes = ['card'];
   if (selected) classes.push('card--selected');
