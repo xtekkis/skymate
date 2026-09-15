@@ -374,13 +374,6 @@ main[tabindex='-1']:focus {
   padding: var(--space-6) var(--space-4) var(--space-8);
 }
 
-.page__lead {
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-6);
-  font-size: var(--text-lg);
-  color: var(--text-muted);
-}
-
 /*
  * Light theme only: supply a dark I-beam over the text inputs.
  *

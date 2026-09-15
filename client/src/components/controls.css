@@ -58,12 +58,6 @@
   font-weight: 500;
 }
 
-.search__hint {
-  font-size: var(--text-xs);
-  color: var(--text-faint);
-  max-width: none;
-}
-
 .search__error {
   display: flex;
   align-items: center;
