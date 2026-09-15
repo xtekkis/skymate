@@ -77,8 +77,12 @@
   white-space: nowrap;
 }
 
-/* The friendly name for what was picked, where the format hint used to sit. */
-.airport__chosen {
+/*
+ * The line under the field: the full name of the airport that was picked, or
+ * a hint before anything has been. One element for both, so the field does not
+ * jump when a choice is made.
+ */
+.airport__note {
   max-width: none;
   font-size: var(--text-xs);
   color: var(--text-muted);
