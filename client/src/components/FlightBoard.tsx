@@ -11,7 +11,8 @@ import {
   contentHeight,
   laneCountFor,
   laneTop,
-  minutesOfLocal,
+  hhmm,
+  minutesAfter,
   offsetFor,
   nowOffset,
 } from './boardGeometry';
@@ -109,7 +110,11 @@ export default function FlightBoard({
   // Stable, or the stage would tear its resize listener down on every render.
   const onHeight = useCallback((height: number) => setStageHeight(height), []);
 
-  const minutes = flights.map((flight) => minutesOfLocal(flight.scheduledLocal));
+  // Where each card sits, as minutes of the window's opening day: a flight
+  // at 02:00 the next morning is 1,560, not 120, so it lands after 23:00
+  // rather than a day before the board begins.
+  const opens = `${date}T${hhmm(start)}`;
+  const minutes = flights.map((flight) => start + minutesAfter(flight.scheduledLocal, opens));
   const lanes = assignLanes(minutes, start, laneCountFor(stageHeight));
 
   // Taller than the stage only once the lanes have overflowed their target,

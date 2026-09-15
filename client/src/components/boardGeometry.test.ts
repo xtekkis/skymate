@@ -13,6 +13,7 @@ import {
   hhmm,
   laneCountFor,
   laneTop,
+  minutesAfter,
   minutesOfLocal,
   nowOffset,
   offsetFor,
@@ -276,5 +277,56 @@ describe('where the present moment falls', () => {
 
     expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: opening })).toBe(GUTTER);
     expect(nowOffset({ start: at(8), windowHours: 4, date: '2026-09-09', now: closing })).not.toBeNull();
+  });
+});
+
+describe('minutes from when the window opens', () => {
+  it('counts the same day as plain clock arithmetic', () => {
+    expect(minutesAfter('2026-09-04T10:30+01:00', '2026-09-04T08:00')).toBe(150);
+  });
+
+  it('carries on past midnight rather than wrapping back to the morning', () => {
+    // A 12 hour window from 20:00 holds flights at 02:00 the next day. Read
+    // by clock alone that is 120, which is before the window even opens.
+    expect(minutesAfter('2026-09-05T02:00+01:00', '2026-09-04T20:00')).toBe(360);
+  });
+
+  it('goes negative for a flight scheduled before the window opens', () => {
+    // AeroDataBox includes these when the revised time falls inside.
+    expect(minutesAfter('2026-09-04T07:45+01:00', '2026-09-04T08:00')).toBe(-15);
+  });
+
+  it('crosses the end of a month and a year', () => {
+    expect(minutesAfter('2027-01-01T00:30+00:00', '2026-12-31T23:30')).toBe(60);
+  });
+
+  it('counts a clocks-forward day as the hours on the airport clock', () => {
+    // No zone takes part, so the day the clocks change is not 23 hours long.
+    expect(minutesAfter('2026-03-30T01:00+02:00', '2026-03-29T01:00')).toBe(1440);
+  });
+
+  it('says nothing useful rather than something wrong for a missing time', () => {
+    expect(minutesAfter(undefined, '2026-09-04T08:00')).toBe(0);
+  });
+});
+
+describe('the present moment on a window that crosses midnight', () => {
+  it('is on the board after midnight, not a day behind it', () => {
+    const left = nowOffset({
+      start: at(20),
+      windowHours: 12,
+      date: '2026-09-09',
+      now: new Date('2026-09-10T02:00:00'),
+    });
+
+    // Six hours in. Before, the date check alone threw this away because
+    // "today" had moved on while the board had not.
+    expect(left).toBe(offsetFor(at(20) + 360, at(20)));
+  });
+
+  it('is gone once that window has closed the next morning', () => {
+    expect(
+      nowOffset({ start: at(20), windowHours: 12, date: '2026-09-09', now: new Date('2026-09-10T09:00:00') }),
+    ).toBeNull();
   });
 });

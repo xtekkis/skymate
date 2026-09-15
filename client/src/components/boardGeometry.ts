@@ -101,6 +101,31 @@ export function todayLocal(now = new Date()) {
  * edge at some large negative number, is how it ends up half visible on a
  * board it has nothing to say about.
  */
+/**
+ * Minutes from one airport-local moment to another, counting whole days.
+ *
+ * The axis used to place a card by its clock alone, which is right until the
+ * window crosses midnight. A 12 hour window from 20:00 carries flights at
+ * 02:00 the next morning, and read as 02:00 of the same day they land nearly
+ * a day to the left of the board, about 3,600 pixels past its edge.
+ *
+ * Sliced, never parsed, the same as everything else here. The date parts go
+ * through Date.UTC as plain numbers, which is day counting and nothing more:
+ * no zone is involved, so daylight saving cannot turn a day into 23 hours.
+ */
+export function minutesAfter(iso: string | undefined, from: string) {
+  if (!iso || iso.length < 16) return 0;
+
+  const day = (value: string) =>
+    Date.UTC(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, Number(value.slice(8, 10))) /
+    86_400_000;
+
+  const days = day(iso) - day(from);
+  if (!Number.isFinite(days)) return 0;
+
+  return days * 1440 + minutesOfLocal(iso) - minutesOfLocal(from);
+}
+
 export function nowOffset({
   start,
   windowHours,
@@ -113,12 +138,15 @@ export function nowOffset({
   date: string;
   now?: Date;
 }) {
-  if (date !== todayLocal(now)) return null;
+  // Measured from when the window opens, by date as well as clock, so that
+  // past midnight on a window that crosses it the present is still on the
+  // board rather than a day behind it.
+  const here = `${todayLocal(now)}T${hhmm(now.getHours() * 60 + now.getMinutes())}`;
+  const elapsed = minutesAfter(here, `${date}T${hhmm(start)}`);
 
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  if (minutes < start || minutes > start + windowHours * 60) return null;
+  if (elapsed < 0 || elapsed > windowHours * 60) return null;
 
-  return offsetFor(minutes, start);
+  return offsetFor(start + elapsed, start);
 }
 
 /** Clear space a card needs before it, or the one before is still in the way. */

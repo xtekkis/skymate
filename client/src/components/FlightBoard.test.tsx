@@ -263,3 +263,35 @@ describe('the present moment', () => {
     expect(nowLine()!.style.left).not.toBe(before);
   });
 });
+
+describe('a window that crosses midnight', () => {
+  function overnight(flights: Flight[]) {
+    render(
+      <FlightBoard
+        flights={flights}
+        date="2026-09-04"
+        start={at(20)}
+        windowHours={12}
+        onOpen={vi.fn()}
+      />,
+    );
+  }
+
+  const leftOf = (number: string) => parseFloat(cardFor(number).style.left);
+
+  it('puts a flight after midnight after the ones before it', () => {
+    overnight([
+      flight('BA 10', '2026-09-04T23:00+01:00'),
+      flight('BA 11', '2026-09-05T01:00+01:00'),
+    ]);
+
+    expect(leftOf('BA 11')).toBeGreaterThan(leftOf('BA 10'));
+  });
+
+  it('keeps it on the board rather than a day off its left edge', () => {
+    overnight([flight('BA 11', '2026-09-05T02:00+01:00')]);
+
+    // Six hours into the window. It used to be about -3,600px.
+    expect(leftOf('BA 11')).toBe(Math.round(360 * PX_PER_MINUTE) + GUTTER);
+  });
+});
