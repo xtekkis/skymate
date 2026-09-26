@@ -25,6 +25,25 @@ const airports = JSON.parse(fs.readFileSync(dataPath, 'utf8')).map((entry) => ({
   haystack: `${entry.iata} ${entry.name} ${entry.municipality ?? ''}`.toLowerCase(),
 }));
 
+/**
+ * Country by code, built once from the same list.
+ *
+ * The schedule sometimes arrives without a country on the far airport, and
+ * every flight needs one to be grouped by country at all. This answers for
+ * free: no request, no allowance, and the list is already in memory.
+ */
+const countries = new Map(
+  airports
+    .filter((airport) => airport.iata && airport.countryCode)
+    .map((airport) => [airport.iata.toUpperCase(), airport.countryCode.toUpperCase()]),
+);
+
+/** The country an airport is in, or undefined for one not in the list. */
+export function countryOf(iata) {
+  if (!iata) return undefined;
+  return countries.get(String(iata).toUpperCase());
+}
+
 export const MIN_QUERY = 2;
 
 /**

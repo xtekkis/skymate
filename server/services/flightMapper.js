@@ -1,4 +1,5 @@
 import { toAirport } from './airportMapper.js';
+import { countryOf } from './airportDirectory.js';
 
 /**
  * Turns raw AeroDataBox movement objects into the Flight shape the client
@@ -53,6 +54,21 @@ function isLive(quality) {
   return Array.isArray(quality) && quality.includes('Live');
 }
 
+/**
+ * An airport with a country on it, in the case the rest of the app expects.
+ *
+ * Two things are wrong with the country as it arrives. It is lowercase, which
+ * no region lookup accepts, and it is sometimes missing altogether. The list
+ * the server already holds answers the second for nothing.
+ */
+function located(airport) {
+  const code = airport.countryCode
+    ? String(airport.countryCode).toUpperCase()
+    : countryOf(airport.iata);
+
+  return code ? { ...airport, countryCode: code } : airport;
+}
+
 function toStatus(value) {
   return STATUS_MAP[value] ?? 'Unknown';
 }
@@ -66,7 +82,7 @@ export function toFlight(raw, direction) {
     number,
     airline: raw?.airline?.name ?? 'Unknown airline',
     direction,
-    counterpart: toAirport(raw?.movement?.airport),
+    counterpart: located(toAirport(raw?.movement?.airport)),
     scheduledTime,
     scheduledLocal: toLocalIso(raw?.movement?.scheduledTime),
     revisedTime: toIso(raw?.movement?.revisedTime),
@@ -103,7 +119,7 @@ export function toFlights(rows, direction) {
  */
 function toEndpoint(raw) {
   return {
-    airport: toAirport(raw?.airport),
+    airport: located(toAirport(raw?.airport)),
     scheduledTime: toIso(raw?.scheduledTime),
     scheduledLocal: toLocalIso(raw?.scheduledTime),
     revisedTime: toIso(raw?.revisedTime),

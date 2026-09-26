@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { airportCount, MIN_QUERY, searchAirports } from './airportDirectory.js';
+import { countryOf, airportCount, MIN_QUERY, searchAirports } from './airportDirectory.js';
 
 describe('airport directory', () => {
   it('loaded the bundled data', () => {
@@ -76,5 +76,27 @@ describe('airport directory', () => {
 
   it('exposes the minimum so the client can agree with it', () => {
     assert.equal(MIN_QUERY, 2);
+  });
+});
+
+describe('the country an airport is in', () => {
+  it('answers from the list already in memory', () => {
+    // No request and no allowance spent: the schedule leaves this out often
+    // enough that asking upstream for it would be most of a month's units.
+    assert.equal(countryOf('LHR'), 'GB');
+    assert.equal(countryOf('JFK'), 'US');
+  });
+
+  it('takes a code in any case and gives one back in upper', () => {
+    // The schedule sends lowercase, and no region lookup accepts that.
+    assert.equal(countryOf('lis'), 'PT');
+  });
+
+  it('says nothing for an airport it does not carry', () => {
+    // Four thousand airports is not all of them, and a guess here would put
+    // a flight under the wrong country.
+    assert.equal(countryOf('ZZZ'), undefined);
+    assert.equal(countryOf(''), undefined);
+    assert.equal(countryOf(undefined), undefined);
   });
 });

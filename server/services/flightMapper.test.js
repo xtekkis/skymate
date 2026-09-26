@@ -245,3 +245,44 @@ describe('toTrackedFlights', () => {
     );
   });
 });
+
+describe('the country on a flight', () => {
+  it('comes back in the case a region lookup accepts', () => {
+    // AeroDataBox sends "pt". Intl.DisplayNames wants "PT".
+    const flight = toFlight(row(), 'departure');
+
+    assert.equal(flight.counterpart.countryCode, 'PT');
+  });
+
+  it('is filled from the airport list when the schedule leaves it out', () => {
+    const flight = toFlight(
+      row({ movement: movement({ airport: { iata: 'LIS', name: 'Lisbon' } }) }),
+      'departure',
+    );
+
+    // Without this the flight cannot be grouped by country at all, and
+    // grouping is the only thing keeping 518 of them readable.
+    assert.equal(flight.counterpart.countryCode, 'PT');
+  });
+
+  it('stays missing for an airport in neither the schedule nor the list', () => {
+    const flight = toFlight(
+      row({ movement: movement({ airport: { iata: 'ZZZ', name: 'Nowhere' } }) }),
+      'departure',
+    );
+
+    // A guess would file the flight under a country it is not going to.
+    assert.equal(flight.counterpart.countryCode, undefined);
+  });
+
+  it('does the same for both ends of a tracked flight', () => {
+    const tracked = toTrackedFlight({
+      number: 'BA 117',
+      departure: { airport: { iata: 'LHR', name: 'Heathrow' } },
+      arrival: { airport: { iata: 'JFK', name: 'Kennedy', countryCode: 'us' } },
+    });
+
+    assert.equal(tracked.departure.airport.countryCode, 'GB');
+    assert.equal(tracked.arrival.airport.countryCode, 'US');
+  });
+});
