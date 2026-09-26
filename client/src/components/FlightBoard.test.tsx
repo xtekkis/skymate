@@ -295,3 +295,41 @@ describe('a window that crosses midnight', () => {
     expect(leftOf('BA 11')).toBe(Math.round(360 * PX_PER_MINUTE) + GUTTER);
   });
 });
+
+describe('a flight scheduled outside the window', () => {
+  const leftOf = (number: string) => parseFloat(cardFor(number).style.left);
+
+  it('is on the board rather than clipped off its edge', () => {
+    // 07:45 on an 08:00 board: AeroDataBox sends it because the revised time
+    // is inside. It used to be drawn at -27px, behind the stage's own edge.
+    board([flight('BA 5', '2026-09-04T07:45+01:00')]);
+
+    expect(leftOf('BA 5')).toBeGreaterThanOrEqual(GUTTER);
+  });
+
+  it('pushes the ones inside the window along by the same amount', () => {
+    board([
+      flight('BA 5', '2026-09-04T07:45+01:00'),
+      flight('BA 6', '2026-09-04T08:00+01:00'),
+    ]);
+
+    // Half an hour of new room in front, and the 08:00 flight sits where
+    // 07:30 would have been plus thirty minutes of axis.
+    expect(leftOf('BA 6') - leftOf('BA 5')).toBe(Math.round(15 * PX_PER_MINUTE));
+    expect(leftOf('BA 6')).toBe(Math.round(30 * PX_PER_MINUTE) + GUTTER);
+  });
+
+  it('leaves the board alone when every flight is inside the window', () => {
+    board();
+
+    expect(leftOf('BA 1')).toBe(GUTTER);
+  });
+
+  it('reaches past the end for one scheduled after the window closes', () => {
+    board([flight('BA 7', '2026-09-04T12:30+01:00')]);
+
+    const canvas = document.querySelector<HTMLElement>('.stage__canvas')!;
+    // Wide enough that the card is not past the edge of what can be panned to.
+    expect(parseFloat(canvas.style.width)).toBeGreaterThan(leftOf('BA 7') + CARD_W);
+  });
+});

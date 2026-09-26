@@ -9,6 +9,7 @@ import {
   MIN_LANES,
   PX_PER_MINUTE,
   assignLanes,
+  axisFor,
   clampPan,
   hhmm,
   laneCountFor,
@@ -328,5 +329,37 @@ describe('the present moment on a window that crosses midnight', () => {
     expect(
       nowOffset({ start: at(20), windowHours: 12, date: '2026-09-09', now: new Date('2026-09-10T09:00:00') }),
     ).toBeNull();
+  });
+});
+
+describe('how far the axis has to reach', () => {
+  it('is the window itself when every flight is inside it', () => {
+    expect(axisFor([0, 120, 239], 4)).toEqual({ lead: 0, hours: 4 });
+  });
+
+  it('is the window when there are no flights at all', () => {
+    expect(axisFor([], 4)).toEqual({ lead: 0, hours: 4 });
+  });
+
+  it('grows in front for a flight scheduled before the window opens', () => {
+    // Scheduled 07:45 on an 08:00 board, which AeroDataBox includes because
+    // its revised time is inside. Half an hour of room, not fifteen minutes,
+    // so the extra arrives with a ruler mark on it.
+    const axis = axisFor([-15, 60], 4);
+
+    expect(axis.lead).toBe(30);
+    expect(axis.hours).toBe(4.5);
+  });
+
+  it('grows behind for one scheduled after it closes', () => {
+    expect(axisFor([0, 250], 4)).toEqual({ lead: 0, hours: 4.5 });
+  });
+
+  it('grows at both ends at once', () => {
+    expect(axisFor([-40, 250], 4)).toEqual({ lead: 60, hours: 5.5 });
+  });
+
+  it('takes the furthest one out, not the last one seen', () => {
+    expect(axisFor([-15, -90, -30], 4)).toEqual({ lead: 90, hours: 5.5 });
   });
 });

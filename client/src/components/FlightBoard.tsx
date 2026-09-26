@@ -11,6 +11,8 @@ import {
   contentHeight,
   laneCountFor,
   laneTop,
+  PX_PER_MINUTE,
+  axisFor,
   hhmm,
   minutesAfter,
   offsetFor,
@@ -110,22 +112,39 @@ export default function FlightBoard({
   // Stable, or the stage would tear its resize listener down on every render.
   const onHeight = useCallback((height: number) => setStageHeight(height), []);
 
-  // Where each card sits, as minutes of the window's opening day: a flight
-  // at 02:00 the next morning is 1,560, not 120, so it lands after 23:00
-  // rather than a day before the board begins.
+  /*
+   * Where each card sits, as minutes from when the window opened. Counted by
+   * date as well as clock, so a flight at 02:00 the next morning is 360 into
+   * a window that opened at 20:00 rather than a day before it began.
+   *
+   * Negative for a flight scheduled before the window, which happens whenever
+   * its revised time is the one inside. The axis grows to the left to hold
+   * those rather than the stage clipping them.
+   */
   const opens = `${date}T${hhmm(start)}`;
-  const minutes = flights.map((flight) => start + minutesAfter(flight.scheduledLocal, opens));
-  const lanes = assignLanes(minutes, start, laneCountFor(stageHeight));
+  const offsets = flights.map((flight) => minutesAfter(flight.scheduledLocal, opens));
+
+  const axis = axisFor(offsets, windowHours);
+  const axisStart = start - axis.lead;
+
+  const minutes = offsets.map((offset) => start + offset);
+  const lanes = assignLanes(minutes, axisStart, laneCountFor(stageHeight));
 
   // Taller than the stage only once the lanes have overflowed their target,
   // which is exactly when there is somewhere to travel down to.
   const used = lanes.length > 0 ? Math.max(...lanes) + 1 : 0;
-  const now = nowOffset({ start, windowHours, date, now: new Date(minute) });
+  /*
+   * Measured against the window rather than the whole axis, then moved along
+   * by whatever room the axis grew in front of it. Now is only ever on the
+   * board while the window it belongs to is open.
+   */
+  const present = nowOffset({ start, windowHours, date, now: new Date(minute) });
+  const now = present === null ? null : present + axis.lead * PX_PER_MINUTE;
 
   return (
     <BoardStage
-      start={start}
-      windowHours={windowHours}
+      start={axisStart}
+      windowHours={axis.hours}
       contentHeight={contentHeight(used)}
       onHeight={onHeight}
     >
@@ -143,7 +162,7 @@ export default function FlightBoard({
           onOpen={onOpen}
           style={{
             position: 'absolute',
-            left: offsetFor(minutes[index], start),
+            left: offsetFor(minutes[index], axisStart),
             top: laneTop(lanes[index]),
             width: CARD_W,
           }}

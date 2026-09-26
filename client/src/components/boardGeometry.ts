@@ -149,6 +149,40 @@ export function nowOffset({
   return offsetFor(start + elapsed, start);
 }
 
+/**
+ * How far the axis has to reach to hold every card.
+ *
+ * The window is what was searched; it is not what comes back. AeroDataBox
+ * includes a flight whose revised time falls inside the window even when its
+ * scheduled time does not, and a card is placed by its schedule. So a flight
+ * scheduled 07:45 and revised to 08:01 belongs on an 08:00 board, fifteen
+ * minutes before it begins, and used to be drawn off the left edge where the
+ * stage clipped it.
+ *
+ * Takes offsets in minutes from when the window opens, and gives back the
+ * blank to add before it and the hours the whole axis then spans. Both ends
+ * snap to the ruler's own half hours, so the extra room arrives with a mark
+ * on it rather than starting between two.
+ *
+ * @param offsets minutes after the window opened, negative for before it
+ */
+export function axisFor(offsets: number[], windowHours: number) {
+  let first = 0;
+  let last = windowHours * 60;
+
+  for (const offset of offsets) {
+    if (offset < first) first = offset;
+    if (offset > last) last = offset;
+  }
+
+  const snap = (minutes: number) => Math.ceil(minutes / TICK_MINUTES) * TICK_MINUTES;
+  // Through max rather than straight out of ceil: -0 is what that returns
+  // for a window nothing reaches in front of, and it reads as a bug.
+  const lead = Math.max(0, snap(-first));
+
+  return { lead, hours: (lead + snap(last)) / 60 };
+}
+
 /** Clear space a card needs before it, or the one before is still in the way. */
 export const CARD_GAP = 12;
 
