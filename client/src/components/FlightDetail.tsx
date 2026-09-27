@@ -1,10 +1,19 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AirplaneLanding, AirplaneTakeoff, ArrowRight, ChatCircleDots, X } from '@phosphor-icons/react';
+import {
+  AirplaneLanding,
+  AirplaneTakeoff,
+  ArrowRight,
+  ChatCircleDots,
+  CircleNotch,
+  X,
+} from '@phosphor-icons/react';
 
 import type { Flight } from '../models';
+import { getFlightByNumber, messageFromError } from '../services/api';
 import { STATUS_LABEL, STATUS_TONE } from './flightStatus';
 import { useAssistant } from './assistantContext';
+import { arrivalOf, type Arrival } from './flightArrival';
 import { progressOf } from './flightProgress';
 import { localTime, revisedTime } from './flightTimes';
 import './FlightDetail.css';
@@ -72,6 +81,17 @@ function questionAbout(flight: Flight, airport: string) {
  */
 export default function FlightDetail({ flight, airport, onClose }: FlightDetailProps) {
   const { ask } = useAssistant();
+
+  /*
+   * Whether this flight landed, which the board it came from does not know.
+   *
+   * Not fetched on open. One panel is one flight, but a reader working
+   * through a board would spend a month's allowance in an afternoon, so the
+   * request waits to be asked for.
+   */
+  const [arrival, setArrival] = useState<Arrival | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkFailed, setCheckFailed] = useState('');
   const titleId = useId();
   const progressId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -98,6 +118,13 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
     return () => opener?.focus();
   }, []);
 
+  // Another flight is another question, and the last answer is not about it.
+  useEffect(() => {
+    setArrival(null);
+    setChecking(false);
+    setCheckFailed('');
+  }, [flight.id]);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
@@ -106,6 +133,30 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
+
+  async function checkArrival() {
+    if (checking) return;
+
+    setChecking(true);
+    setCheckFailed('');
+
+    try {
+      const date = flight.scheduledLocal?.slice(0, 10);
+      const { flights: legs } = await getFlightByNumber(flight.number, date);
+      const found = arrivalOf(flight, legs);
+
+      if (!found) {
+        setCheckFailed('That flight is not being tracked today.');
+        return;
+      }
+
+      setArrival(found);
+    } catch (caught) {
+      setCheckFailed(messageFromError(caught));
+    } finally {
+      setChecking(false);
+    }
+  }
 
   const Plane = outbound ? AirplaneTakeoff : AirplaneLanding;
 
@@ -254,6 +305,63 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
               </li>
             ))}
           </ol>
+        )}
+      </section>
+
+      <section className="arrival" aria-label="Arrival">
+        {arrival ? (
+          <>
+            <p className="arrival__where">
+              <span className={`arrival__status fact__value--${STATUS_TONE[arrival.status]}`}>
+                {STATUS_LABEL[arrival.status]}
+              </span>
+              {' at '}
+              <span className="tabular">{arrival.airport.iata}</span>
+            </p>
+
+            <p className="arrival__when">
+              {/* Named, because a prediction is not a schedule and a reader
+                  deciding when to leave for the airport needs to know which. */}
+              {arrival.kind === 'Unknown' ? (
+                'No arrival time published'
+              ) : (
+                <>
+                  {arrival.kind} <span className="tabular">{arrival.time}</span> local
+                </>
+              )}
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="detail__ask"
+              onClick={() => void checkArrival()}
+              disabled={checking}
+            >
+              {checking ? (
+                <>
+                  <CircleNotch className="search__spinner" size={18} weight="bold" aria-hidden="true" />
+                  Checking
+                </>
+              ) : (
+                <>
+                  <AirplaneLanding size={18} weight="bold" aria-hidden="true" />
+                  Check arrival
+                </>
+              )}
+            </button>
+
+            {checkFailed ? (
+              <p className="arrival__note" role="alert">
+                {checkFailed}
+              </p>
+            ) : (
+              <p className="arrival__note">
+                Asks about this one flight. The board only knows the {outbound ? 'departure' : 'arrival'}.
+              </p>
+            )}
+          </>
         )}
       </section>
 

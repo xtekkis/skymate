@@ -1,10 +1,18 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FlightDetail from './FlightDetail';
+import { getFlightByNumber } from '../services/api';
 import { AssistantContext } from './assistantContext';
+
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/api')>()),
+  getFlightByNumber: vi.fn(),
+}));
+
+const lookup = vi.mocked(getFlightByNumber);
 import type { Flight } from '../models';
 
 const flight = (overrides: Partial<Flight> = {}): Flight => ({
@@ -320,5 +328,113 @@ describe('asking the assistant about it', () => {
     await user.click(button());
 
     expect(ask.mock.calls[0][0]).toContain('from New York (JFK) to LHR');
+  });
+});
+
+describe('checking whether it arrived', () => {
+  const leg = (over: Record<string, unknown> = {}) => ({
+    id: 'BA 117',
+    number: 'BA 117',
+    airline: 'British Airways',
+    status: 'Arrived',
+    departure: { airport: { iata: 'LHR', name: 'Heathrow' }, scheduledTime: '2026-09-01T08:00:00Z' },
+    arrival: {
+      airport: { iata: 'JFK', name: 'Kennedy' },
+      scheduledLocal: '2026-09-01T11:30-04:00',
+      revisedLocal: '2026-09-01T11:52-04:00',
+    },
+    isCargo: false,
+    ...over,
+  });
+
+  function answer(flights: unknown[] = [leg()]) {
+    lookup.mockResolvedValue({ number: 'BA 117', count: flights.length, flights } as never);
+  }
+
+  const check = () => screen.getByRole('button', { name: 'Check arrival' });
+
+  beforeEach(() => {
+    lookup.mockReset();
+  });
+
+  it('asks nothing until it is asked', () => {
+    show();
+
+    // A reader working through a board would spend a month of allowance in
+    // an afternoon if this fetched on open.
+    expect(lookup).not.toHaveBeenCalled();
+    expect(check()).toBeTruthy();
+  });
+
+  it('says what pressing it will do', () => {
+    show();
+
+    expect(screen.getByText(/Asks about this one flight/)).toBeTruthy();
+  });
+
+  it('asks about this flight on this date', async () => {
+    answer();
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+
+    expect(lookup).toHaveBeenCalledWith('BA 117', '2026-09-01');
+  });
+
+  it('says it landed, where, and when', async () => {
+    answer();
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+
+    const arrival = await screen.findByRole('region', { name: 'Arrival' });
+    expect(arrival.textContent).toContain('Arrived');
+    expect(arrival.textContent).toContain('JFK');
+    expect(arrival.textContent).toContain('11:52');
+  });
+
+  it('names the time as revised rather than as the schedule', async () => {
+    answer();
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+
+    expect((await screen.findByRole('region', { name: 'Arrival' })).textContent).toContain('Revised');
+  });
+
+  it('asks once, not again on every render', async () => {
+    answer();
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+    await screen.findByText(/Arrived/);
+
+    expect(lookup).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so when the number is not being tracked', async () => {
+    answer([]);
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+  });
+
+  it('says so when the request fails', async () => {
+    lookup.mockRejectedValue(new Error('offline'));
+    const user = userEvent.setup();
+    show();
+
+    await user.click(check());
+
+    // And leaves the button there, since the next press may work.
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(check()).toBeTruthy();
   });
 });
