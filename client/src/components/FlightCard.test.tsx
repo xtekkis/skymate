@@ -148,3 +148,55 @@ describe('opening it', () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ number: 'BA 117' }));
   });
 });
+
+describe('a flight whose far end has been checked', () => {
+  const landed = {
+    status: 'Arrived' as const,
+    time: '11:52',
+    kind: 'Revised' as const,
+    airport: { iata: 'JFK', name: 'Kennedy', municipality: 'New York' },
+  };
+
+  it('says it arrived rather than that it departed', () => {
+    render(<FlightCard flight={flight({ status: 'Departed' })} onOpen={vi.fn()} arrival={landed} />);
+
+    // Departed on a flight that landed two hours ago is the older and
+    // smaller truth of the two.
+    expect(screen.getByText('Arrived')).toBeTruthy();
+    expect(screen.queryByText('Departed')).toBeNull();
+  });
+
+  it('says where and when it got there', () => {
+    render(
+      <FlightCard
+        flight={flight({ status: 'Departed', terminal: '5', gate: 'A15' })}
+        onOpen={vi.fn()}
+        arrival={landed}
+      />,
+    );
+
+    // The gate it left from is history once it has landed somewhere else.
+    expect(screen.getByText(/JFK 11:52/)).toBeTruthy();
+    expect(screen.queryByText(/A15/)).toBeNull();
+  });
+
+  it('keeps the gate while it is still on its way', () => {
+    render(
+      <FlightCard
+        flight={flight({ status: 'Departed', terminal: '5', gate: 'A15' })}
+        onOpen={vi.fn()}
+        arrival={{ ...landed, status: 'EnRoute' }}
+      />,
+    );
+
+    expect(screen.getByText('En route')).toBeTruthy();
+    expect(screen.getByText(/A15/)).toBeTruthy();
+  });
+
+  it('is unchanged when nobody has asked', () => {
+    render(<FlightCard flight={flight({ status: 'Departed', gate: 'A15' })} onOpen={vi.fn()} />);
+
+    expect(screen.getByText('Departed')).toBeTruthy();
+    expect(screen.getByText(/A15/)).toBeTruthy();
+  });
+});

@@ -23,6 +23,10 @@ interface FlightDetailProps {
   /** IATA code of the airport the board is showing. */
   airport: string;
   onClose: () => void;
+  /** What was already checked for this flight, so a second look costs nothing. */
+  arrival?: Arrival | null;
+  /** Handed up so the board can wear it too, and so it is not asked twice. */
+  onChecked?: (flight: Flight, arrival: Arrival) => void;
 }
 
 /**
@@ -79,7 +83,13 @@ function questionAbout(flight: Flight, airport: string) {
  * Not modal: the board stays usable behind it, and pressing another card
  * swaps what is shown rather than having to close this first.
  */
-export default function FlightDetail({ flight, airport, onClose }: FlightDetailProps) {
+export default function FlightDetail({
+  flight,
+  airport,
+  onClose,
+  arrival: known = null,
+  onChecked,
+}: FlightDetailProps) {
   const { ask } = useAssistant();
 
   /*
@@ -89,7 +99,7 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
    * through a board would spend a month's allowance in an afternoon, so the
    * request waits to be asked for.
    */
-  const [arrival, setArrival] = useState<Arrival | null>(null);
+  const [arrival, setArrival] = useState<Arrival | null>(known);
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState('');
   const titleId = useId();
@@ -118,12 +128,16 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
     return () => opener?.focus();
   }, []);
 
-  // Another flight is another question, and the last answer is not about it.
+  /*
+   * Another flight is another question, and the last answer is not about it.
+   * Unless it has been asked before: seeding from what the page remembers is
+   * what stops a second look spending a second unit.
+   */
   useEffect(() => {
-    setArrival(null);
+    setArrival(known);
     setChecking(false);
     setCheckFailed('');
-  }, [flight.id]);
+  }, [flight.id, known]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -151,6 +165,7 @@ export default function FlightDetail({ flight, airport, onClose }: FlightDetailP
       }
 
       setArrival(found);
+      onChecked?.(flight, found);
     } catch (caught) {
       setCheckFailed(messageFromError(caught));
     } finally {

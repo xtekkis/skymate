@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -436,5 +436,70 @@ describe('checking whether it arrived', () => {
     // And leaves the button there, since the next press may work.
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(check()).toBeTruthy();
+  });
+});
+
+describe('an arrival that is already known', () => {
+  const landed = {
+    status: 'Arrived' as const,
+    time: '11:52',
+    kind: 'Revised' as const,
+    airport: { iata: 'JFK', name: 'Kennedy', municipality: 'New York' },
+  };
+
+  function showKnown() {
+    render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail flight={flight()} airport="LHR" onClose={vi.fn()} arrival={landed} />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    lookup.mockReset();
+  });
+
+  it('shows it without asking again', () => {
+    showKnown();
+
+    // Reopening a flight already checked must not spend a second unit.
+    expect(screen.getByRole('region', { name: 'Arrival' }).textContent).toContain('Arrived');
+    expect(screen.queryByRole('button', { name: 'Check arrival' })).toBeNull();
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it('hands what it learns back to the page', async () => {
+    lookup.mockResolvedValue({
+      number: 'BA 117',
+      count: 1,
+      flights: [
+        {
+          id: 'BA 117',
+          number: 'BA 117',
+          airline: 'British Airways',
+          status: 'Arrived',
+          departure: { airport: { iata: 'LHR', name: 'Heathrow' }, scheduledTime: '2026-09-01T08:00:00Z' },
+          arrival: { airport: { iata: 'JFK', name: 'Kennedy' }, revisedLocal: '2026-09-01T11:52-04:00' },
+          isCargo: false,
+        },
+      ],
+    } as never);
+
+    const onChecked = vi.fn();
+    render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail flight={flight()} airport="LHR" onClose={vi.fn()} onChecked={onChecked} />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Check arrival' }));
+
+    // So the board can wear it, and so it is never asked twice.
+    await waitFor(() => expect(onChecked).toHaveBeenCalledTimes(1));
+    expect(onChecked.mock.calls[0][1]).toMatchObject({ status: 'Arrived', time: '11:52' });
   });
 });

@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 
 import type { Flight } from '../models';
 import { STATUS_LABEL, STATUS_TONE, isBoarding } from './flightStatus';
+import type { Arrival } from './flightArrival';
 import { localTime, revisedTime } from './flightTimes';
 import './FlightCard.css';
 
@@ -12,6 +13,14 @@ interface FlightCardProps {
   onOpen: (flight: Flight) => void;
   /** Where the board puts it. Left unset, the card is simply full width. */
   style?: CSSProperties;
+  /**
+   * The far end, once somebody has asked about it.
+   *
+   * A departures board says a flight left and stops there. This is the answer
+   * to the one question it cannot answer, and only flights that were actually
+   * asked about have one.
+   */
+  arrival?: Arrival | null;
 }
 
 /**
@@ -34,9 +43,22 @@ function whereToGo(flight: Flight) {
  * Full width by default rather than positioned: the board places it on the
  * time axis, and the narrow layout stacks the same card in a list.
  */
-export default function FlightCard({ flight, selected = false, onOpen, style }: FlightCardProps) {
+export default function FlightCard({
+  flight,
+  selected = false,
+  onOpen,
+  style,
+  arrival = null,
+}: FlightCardProps) {
   const scheduled = localTime(flight.scheduledLocal);
   const revised = revisedTime(flight);
+
+  /*
+   * The status of the whole journey wins over the board's own once it is
+   * known. "Departed" on a flight that landed two hours ago is the older and
+   * smaller truth of the two.
+   */
+  const status = arrival?.status ?? flight.status;
 
   const classes = ['card'];
   if (selected) classes.push('card--selected');
@@ -78,15 +100,24 @@ export default function FlightCard({ flight, selected = false, onOpen, style }: 
       </span>
 
       <span className="card__row">
-        <span className={`badge badge--${STATUS_TONE[flight.status]}`}>
+        <span className={`badge badge--${STATUS_TONE[status]}`}>
           <span
-            className={isBoarding(flight.status) ? 'badge__dot badge__dot--live' : 'badge__dot'}
+            className={isBoarding(status) ? 'badge__dot badge__dot--live' : 'badge__dot'}
             aria-hidden="true"
           />
-          {STATUS_LABEL[flight.status]}
+          {STATUS_LABEL[status]}
         </span>
 
-        <span className="card__meta tabular">{whereToGo(flight)}</span>
+        {/* Once it has landed the gate it left from is history, and where and
+            when it got there is the thing worth the same space. */}
+        {arrival && arrival.status === 'Arrived' ? (
+          <span className="card__meta tabular">
+            <span className="visually-hidden">at </span>
+            {arrival.airport.iata} {arrival.time}
+          </span>
+        ) : (
+          <span className="card__meta tabular">{whereToGo(flight)}</span>
+        )}
       </span>
     </button>
   );

@@ -7,6 +7,7 @@ import BoardSummary from '../components/BoardSummary';
 import CountryPicker from '../components/CountryPicker';
 import FlightCard from '../components/FlightCard';
 import FlightDetail from '../components/FlightDetail';
+import type { Arrival } from '../components/flightArrival';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
 import SearchSheet from '../components/SearchSheet';
@@ -108,12 +109,22 @@ export default function HomePage() {
    */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  /*
+   * The far end of the flights somebody has actually asked about, by id.
+   *
+   * Kept for as long as the results are, so a departures board fills in
+   * arrivals a flight at a time and a second look at one costs nothing.
+   */
+  const [arrivals, setArrivals] = useState<Record<string, Arrival>>({});
+
   // A filter belongs to the results it was chosen from, and so does an open
   // flight. The country opens on whichever has the most flights in them.
   useEffect(() => {
     setDestination(null);
     setSelectedId(null);
     setCountry(result ? busiestCountry(result.flights) : null);
+    // A new search is new flights, and these were about the old ones.
+    setArrivals({});
   }, [result]);
 
   const all = result?.flights ?? [];
@@ -308,7 +319,12 @@ export default function HomePage() {
           <ol className="board-list">
             {flights.map((flight) => (
               <li key={flight.id}>
-                <FlightCard flight={flight} onOpen={open} selected={flight.id === selectedId} />
+                <FlightCard
+                  flight={flight}
+                  onOpen={open}
+                  selected={flight.id === selectedId}
+                  arrival={arrivals[flight.id]}
+                />
               </li>
             ))}
           </ol>
@@ -337,11 +353,20 @@ export default function HomePage() {
             windowHours={query.windowHours}
             onOpen={open}
             selectedId={selectedId}
+            arrivals={arrivals}
           />
         </>
       )}
       {selected && result && (
-        <FlightDetail flight={selected} airport={result.airport} onClose={close} />
+        <FlightDetail
+          flight={selected}
+          airport={result.airport}
+          onClose={close}
+          arrival={arrivals[selected.id]}
+          onChecked={(checked, found) =>
+            setArrivals((current) => ({ ...current, [checked.id]: found }))
+          }
+        />
       )}
     </main>
   );

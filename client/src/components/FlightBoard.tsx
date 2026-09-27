@@ -3,6 +3,7 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 
 import type { Flight } from '../models';
+import type { Arrival } from './flightArrival';
 import BoardStage from './BoardStage';
 import FlightCard from './FlightCard';
 import {
@@ -56,6 +57,8 @@ interface FlightBoardProps {
   windowHours: number;
   selectedId?: string | null;
   onOpen: (flight: Flight) => void;
+  /** What has been checked so far, by flight id. Empty until someone asks. */
+  arrivals?: Record<string, Arrival>;
 }
 
 /**
@@ -72,6 +75,7 @@ export default function FlightBoard({
   windowHours,
   selectedId = null,
   onOpen,
+  arrivals = {},
 }: FlightBoardProps) {
   const [stageHeight, setStageHeight] = useState(0);
   const [minute, setMinute] = useState(() => Date.now());
@@ -160,6 +164,7 @@ export default function FlightBoard({
           flight={flight}
           selected={flight.id === selectedId}
           onOpen={onOpen}
+          arrival={arrivals[flight.id]}
           style={{
             position: 'absolute',
             left: offsetFor(minutes[index], axisStart),
