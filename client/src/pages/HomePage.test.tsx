@@ -471,3 +471,118 @@ describe('opening a flight', () => {
     expect(screen.getByRole('dialog', { name: 'BA 117' })).toBeTruthy();
   });
 });
+
+describe('showing one country at a time', () => {
+  const bound = (number: string, iata: string, city: string, countryCode?: string): Flight => ({
+    ...flight(number),
+    id: `${number}-${iata}`,
+    counterpart: { iata, name: `${city} airport`, municipality: city, countryCode },
+  });
+
+  /** Three to the United States, one to France, one with no country at all. */
+  function mixed() {
+    flights.mockResolvedValue({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+      count: 5,
+      flights: [
+        bound('BA 1', 'JFK', 'New York', 'US'),
+        bound('BA 2', 'LAX', 'Los Angeles', 'US'),
+        bound('BA 3', 'ORD', 'Chicago', 'US'),
+        bound('BA 4', 'CDG', 'Paris', 'FR'),
+        bound('BA 5', 'ZZZ', 'Nowhere'),
+      ],
+    });
+  }
+
+  const cards = () => Array.from(document.querySelectorAll('.stage__canvas .card'));
+  const picker = () => screen.getByRole('combobox', { name: 'Showing flights to' });
+
+  it('opens on the country with the most flights', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    // Five hundred flights at once is more board than anyone can read, so a
+    // search has to land somewhere rather than nowhere.
+    expect((picker() as HTMLSelectElement).value).toBe('US');
+  });
+
+  it('draws only that country', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    expect(screen.queryByRole('button', { name: /Paris/ })).toBeNull();
+  });
+
+  it('changes what is drawn when another is chosen', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+    await user.selectOptions(picker(), 'FR');
+
+    expect(cards()).toHaveLength(1);
+    // No second request: every flight was already fetched.
+    expect(flights).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers only the destinations inside the chosen country', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    // A chip for Paris while France is not showing empties the board when
+    // pressed.
+    expect(within(summary).queryByRole('button', { name: /Paris/ })).toBeNull();
+    expect(within(summary).getByRole('button', { name: /New York/ })).toBeTruthy();
+  });
+
+  it('counts within the country rather than across the whole window', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    expect(summary.querySelector('.summary__number')?.textContent).toBe('3');
+  });
+
+  it('lets go of a destination chosen inside the country being left', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    await user.click(within(summary).getByRole('button', { name: /New York/ }));
+    expect(cards()).toHaveLength(1);
+
+    await user.selectOptions(picker(), 'FR');
+
+    // Otherwise France is narrowed to New York and the board is empty.
+    // Scoped to the board: the chip for Paris names the same city.
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0].textContent).toContain('Paris');
+  });
+
+  it('can reach the flights that have no country', async () => {
+    mixed();
+    const user = userEvent.setup();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+    await user.selectOptions(picker(), '');
+
+    expect(screen.getByRole('button', { name: /BA 5/ })).toBeTruthy();
+  });
+});

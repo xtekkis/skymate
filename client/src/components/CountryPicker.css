@@ -1,0 +1,39 @@
+/*
+ * The country the board is showing.
+ *
+ * Its own card at the foot of the sidebar rather than a field inside the
+ * search: it does not change what was asked for, only how much of the answer
+ * is drawn at once.
+ */
+.picker {
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.picker__control {
+  position: relative;
+  display: grid;
+}
+
+/* The native arrow is the one control the browsers disagree about. */
+.picker__control .search__input {
+  appearance: none;
+  padding-right: var(--space-6);
+}
+
+.picker__caret {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  translate: 0 -50%;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* On a narrow screen it sits in the flow above the list, not in a card. */
+.board-page--narrow .picker {
+  margin: var(--space-3) var(--space-4) 0;
+}

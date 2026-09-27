@@ -4,6 +4,7 @@ import { AirplaneTilt, WarningCircle } from '@phosphor-icons/react';
 
 import BoardBackdrop from '../components/BoardBackdrop';
 import BoardSummary from '../components/BoardSummary';
+import CountryPicker from '../components/CountryPicker';
 import FlightCard from '../components/FlightCard';
 import FlightDetail from '../components/FlightDetail';
 import FlightBoard from '../components/FlightBoard';
@@ -12,6 +13,7 @@ import SearchSheet from '../components/SearchSheet';
 import { minutesOfLocal, todayLocal } from '../components/boardGeometry';
 import { paramsFor, queryFrom, type BoardQuery } from '../components/searchQuery';
 import { useFlightSearch } from '../components/useFlightSearch';
+import { busiestCountry, inCountry, toCountries } from '../components/countries';
 import { useMediaQuery } from '../components/useMediaQuery';
 import { useToast } from '../components/toastContext';
 import type { Flight, SearchParams } from '../models';
@@ -78,6 +80,16 @@ export default function HomePage() {
   const { phase, result, error, status: httpStatus } = useFlightSearch(params);
 
   /*
+   * The country the board is showing, chosen for a fresh search and then
+   * kept until the reader changes it.
+   *
+   * Twelve hours out of a large airport is five hundred flights. Every one of
+   * them is already fetched, so this is a choice about what to draw rather
+   * than a second request.
+   */
+  const [country, setCountry] = useState<string | null>(null);
+
+  /*
    * The destination the board is narrowed to, if any.
    *
    * Held here rather than in the URL, unlike the search itself. The URL is
@@ -96,16 +108,29 @@ export default function HomePage() {
    */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // A filter belongs to the results it was chosen from, and so does an open flight.
+  // A filter belongs to the results it was chosen from, and so does an open
+  // flight. The country opens on whichever has the most flights in them.
   useEffect(() => {
     setDestination(null);
     setSelectedId(null);
+    setCountry(result ? busiestCountry(result.flights) : null);
   }, [result]);
 
   const all = result?.flights ?? [];
+  const countries = toCountries(all);
+
+  // The country first, then the destination inside it. Both are views over
+  // flights already in hand.
+  const here = inCountry(all, country);
   const flights = destination
-    ? all.filter((flight) => flight.counterpart.iata === destination)
-    : all;
+    ? here.filter((flight) => flight.counterpart.iata === destination)
+    : here;
+
+  /** Changing country makes a destination inside the old one meaningless. */
+  function chooseCountry(code: string) {
+    setCountry(code);
+    setDestination(null);
+  }
 
   /*
    * What the board takes over from the document while it is on screen.
@@ -211,7 +236,7 @@ export default function HomePage() {
 
   const summary = result && result.count > 0 && (
     <BoardSummary
-      flights={result.flights}
+      flights={here}
       direction={result.direction}
       airport={result.airport}
       from={result.from}
@@ -225,6 +250,10 @@ export default function HomePage() {
 
   // The board is the page. Its title is owed to a screen reader, not to
   // anyone looking at a masthead that already says Skymate.
+  const picker = (
+    <CountryPicker countries={countries} value={country} onChange={chooseCountry} />
+  );
+
   const title = <h1 className="visually-hidden">Flight board</h1>;
 
   return (
@@ -262,7 +291,7 @@ export default function HomePage() {
           {result && result.count > 0 && (
             <BoardSummary
               compact
-              flights={result.flights}
+              flights={here}
               direction={result.direction}
               airport={result.airport}
               from={result.from}
@@ -273,6 +302,8 @@ export default function HomePage() {
               isSearching={phase === 'loading'}
             />
           )}
+
+          {picker}
 
           <ol className="board-list">
             {flights.map((flight) => (
@@ -296,6 +327,7 @@ export default function HomePage() {
             {announce}
             {notices}
             {summary}
+            {picker}
           </aside>
 
           <FlightBoard
