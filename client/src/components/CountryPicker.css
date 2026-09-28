@@ -1,9 +1,9 @@
 /*
  * The country the board is showing.
  *
- * Its own card at the foot of the sidebar rather than a field inside the
- * search: it does not change what was asked for, only how much of the answer
- * is drawn at once.
+ * A listbox of our own. A native select hands its list to the operating
+ * system, which is why the old one arrived square, grey, full height and
+ * opening upward: none of that was ours to set.
  */
 .picker {
   gap: var(--space-1);
@@ -13,34 +13,99 @@
   border-radius: var(--radius-panel);
 }
 
-.picker__control {
-  position: relative;
-  display: grid;
-}
-
-/* The native arrow is the one control the browsers disagree about. */
-.picker__control .search__input {
-  appearance: none;
-  padding-right: var(--space-6);
-}
-
-.picker__caret {
-  position: absolute;
-  top: 50%;
-  right: var(--space-3);
-  translate: 0 -50%;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-/* On a narrow screen it sits in the flow above the list, not in a card. */
-.board-page--narrow .picker {
-  margin: var(--space-3) var(--space-4) 0;
-}
-
 /* Inside the summary it is one of that card's fields, not a second card. */
 .summary .picker {
   padding: 0;
   background: none;
   border: none;
+}
+
+.picker__control {
+  position: relative;
+  display: grid;
+}
+
+/* Inherits the field styling, and lays its own contents out. */
+.picker__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__caret {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/*
+ * Eight rows and then it scrolls, rather than as tall as the list happens to
+ * be. Forty countries was a menu the height of the window.
+ */
+.picker__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: var(--z-overlay);
+  width: 100%;
+  max-height: 296px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md);
+}
+
+/* Only when there is no room the other way, since this covers the search. */
+.picker__list--up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.picker__option {
+  display: grid;
+  grid-template-columns: 1.1rem 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Whatever the pointer or the arrow keys are on, which is one thing. */
+.picker__option--active {
+  background: var(--surface-sunken);
+}
+
+.picker__tick {
+  display: flex;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.picker__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__count {
+  color: var(--text-faint);
 }

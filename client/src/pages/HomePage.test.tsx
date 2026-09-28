@@ -500,6 +500,12 @@ describe('showing one country at a time', () => {
   const cards = () => Array.from(document.querySelectorAll('.stage__canvas .card'));
   const picker = () => screen.getByRole('combobox', { name: 'Showing flights to' });
 
+  /** It is a listbox of our own now, so choosing is opening and clicking. */
+  async function choose(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+    await user.click(picker());
+    await user.click(screen.getByRole('option', { name }));
+  }
+
   it('opens on the country with the most flights', async () => {
     mixed();
     show(SEARCH);
@@ -508,7 +514,7 @@ describe('showing one country at a time', () => {
 
     // Five hundred flights at once is more board than anyone can read, so a
     // search has to land somewhere rather than nowhere.
-    expect((picker() as HTMLSelectElement).value).toBe('US');
+    expect(picker().textContent).toContain('United States');
   });
 
   it('draws only that country', async () => {
@@ -526,7 +532,7 @@ describe('showing one country at a time', () => {
     show(SEARCH);
 
     await waitFor(() => expect(cards()).toHaveLength(3));
-    await user.selectOptions(picker(), 'FR');
+    await choose(user, /France/);
 
     expect(cards()).toHaveLength(1);
     // No second request: every flight was already fetched.
@@ -567,7 +573,7 @@ describe('showing one country at a time', () => {
     await user.click(within(summary).getByRole('button', { name: /New York/ }));
     expect(cards()).toHaveLength(1);
 
-    await user.selectOptions(picker(), 'FR');
+    await choose(user, /France/);
 
     // Otherwise France is narrowed to New York and the board is empty.
     // Scoped to the board: the chip for Paris names the same city.
@@ -581,7 +587,7 @@ describe('showing one country at a time', () => {
     show(SEARCH);
 
     await waitFor(() => expect(cards()).toHaveLength(3));
-    await user.selectOptions(picker(), '');
+    await choose(user, /Unknown/);
 
     expect(screen.getByRole('button', { name: /BA 5/ })).toBeTruthy();
   });
