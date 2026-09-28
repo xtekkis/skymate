@@ -585,4 +585,30 @@ describe('showing one country at a time', () => {
 
     expect(screen.getByRole('button', { name: /BA 5/ })).toBeTruthy();
   });
+
+  it('puts the picker inside the card that counts what it chooses', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    // It was a card of its own below this one, which on a board with a few
+    // destinations put the control that decides what is drawn below the fold.
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    expect(within(summary).getByRole('combobox', { name: 'Showing flights to' })).toBeTruthy();
+  });
+
+  it('puts it before the count it governs', async () => {
+    mixed();
+    show(SEARCH);
+
+    await waitFor(() => expect(cards()).toHaveLength(3));
+
+    const summary = screen.getByRole('region', { name: 'What is on the board' });
+    const chooser = within(summary).getByRole('combobox', { name: 'Showing flights to' });
+    const count = summary.querySelector('.summary__number')!;
+
+    // Reading order: choose a country, then read what is in it.
+    expect(chooser.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

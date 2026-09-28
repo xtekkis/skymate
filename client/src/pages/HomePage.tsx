@@ -245,6 +245,10 @@ export default function HomePage() {
     </>
   );
 
+  const picker = (
+    <CountryPicker countries={countries} value={country} onChange={chooseCountry} />
+  );
+
   const summary = result && result.count > 0 && (
     <BoardSummary
       flights={here}
@@ -256,15 +260,12 @@ export default function HomePage() {
       selected={destination}
       onSelect={setDestination}
       isSearching={phase === 'loading'}
+      picker={picker}
     />
   );
 
   // The board is the page. Its title is owed to a screen reader, not to
   // anyone looking at a masthead that already says Skymate.
-  const picker = (
-    <CountryPicker countries={countries} value={country} onChange={chooseCountry} />
-  );
-
   const title = <h1 className="visually-hidden">Flight board</h1>;
 
   return (
@@ -343,7 +344,6 @@ export default function HomePage() {
             {announce}
             {notices}
             {summary}
-            {picker}
           </aside>
 
           <FlightBoard

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { hueFor, toDestinations } from './destinations';
 
@@ -28,6 +28,15 @@ interface BoardSummaryProps {
    * announced by the page's live region; what is lost is reading them.
    */
   compact?: boolean;
+  /**
+   * The country picker, which belongs at the top of this card.
+   *
+   * Everything below it is counted within whatever it is set to, so it reads
+   * as the question the rest of the card answers. It was a card of its own
+   * underneath, which put the control that decides what the board shows
+   * below the fold on any board with a few destinations.
+   */
+  picker?: ReactNode;
 }
 
 /** Sliced, not parsed. These are wall clocks at the airport, not instants. */
@@ -54,6 +63,7 @@ export default function BoardSummary({
   onSelect,
   isSearching = false,
   compact = false,
+  picker,
 }: BoardSummaryProps) {
   const destinations = toDestinations(flights);
   const noun = direction === 'departure' ? 'departures' : 'arrivals';
@@ -98,6 +108,8 @@ export default function BoardSummary({
   return (
     <section className="summary" aria-label="What is on the board">
       <span className="summary__eyebrow">02 | Where today goes</span>
+
+      {picker}
 
       <div>
         <p className="summary__count">

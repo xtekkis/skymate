@@ -37,3 +37,10 @@
 .board-page--narrow .picker {
   margin: var(--space-3) var(--space-4) 0;
 }
+
+/* Inside the summary it is one of that card's fields, not a second card. */
+.summary .picker {
+  padding: 0;
+  background: none;
+  border: none;
+}
