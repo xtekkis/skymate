@@ -3,41 +3,12 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Broadcast, WarningCircle } from '@phosphor-icons/react';
 
-import type { FlightEndpoint, FlightStatus, TrackedFlight } from '../models';
+import type { FlightEndpoint, TrackedFlight } from '../models';
+import { STATUS_LABEL, STATUS_TONE } from '../components/flightStatus';
 import { getFlightByNumber, messageFromError } from '../services/api';
 import './FlightPage.css';
 
 type Phase = 'loading' | 'ready' | 'error';
-
-const STATUS_LABEL: Record<FlightStatus, string> = {
-  Unknown: 'Unknown',
-  Expected: 'Expected',
-  CheckIn: 'Check in',
-  Boarding: 'Boarding',
-  GateClosed: 'Gate closed',
-  Departed: 'Departed',
-  EnRoute: 'En route',
-  Approaching: 'Approaching',
-  Arrived: 'Arrived',
-  Delayed: 'Delayed',
-  Diverted: 'Diverted',
-  Canceled: 'Cancelled',
-};
-
-const STATUS_TONE: Record<FlightStatus, string> = {
-  Unknown: 'muted',
-  Expected: 'info',
-  CheckIn: 'info',
-  Boarding: 'ok',
-  GateClosed: 'warn',
-  Departed: 'muted',
-  EnRoute: 'muted',
-  Approaching: 'ok',
-  Arrived: 'ok',
-  Delayed: 'warn',
-  Diverted: 'warn',
-  Canceled: 'danger',
-};
 
 /** Read straight off the local string: parsing would re-render in the browser's zone. */
 function clock(iso?: string) {
