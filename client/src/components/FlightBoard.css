@@ -1,4 +1,26 @@
 /*
+ * Cards arrive rather than appear, the way a board fills in.
+ *
+ * In CSS rather than in JavaScript so that nothing has to decide whether to
+ * run it: the blanket reduced-motion rule in index.css flattens it, and a
+ * card that never animates is a card that is simply there. The delay per
+ * card is the one part the board knows, so it sets that inline.
+ *
+ * "both" holds the opening frame through the delay. Without it a card would
+ * show, vanish, and fade back in.
+ */
+.stage__canvas .card {
+  animation: card-arrive 320ms var(--ease-out) both;
+}
+
+@keyframes card-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+/*
  * The present moment, drawn down the board.
  *
  * The accent, spent here on the only mark that is not a flight. It sits on the

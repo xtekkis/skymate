@@ -433,6 +433,9 @@ main[tabindex='-1']:focus {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* And the delay, or a staggered entrance is a third of a second of
+       blank screen for someone who asked for no movement at all. */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

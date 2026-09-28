@@ -1,33 +1,12 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FlightBoard from './FlightBoard';
 import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from './boardGeometry';
+import { STAGGER_CAP_MS, STEP_MS } from './FlightBoard';
 import type { Flight } from '../models';
 
-/** jsdom answers no media query, so a test that wants motion has to say so. */
-function allowMotion(allowed: boolean) {
-  window.matchMedia = ((query: string) =>
-    ({
-      // Matched on no-preference only. Testing for "reduce" would be wrong:
-      // "prefers-reduced-motion: no-preference" contains it too.
-      matches: allowed === query.includes('no-preference'),
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    }) as MediaQueryList) as typeof window.matchMedia;
-}
-
-const originalMatchMedia = window.matchMedia;
-
-afterEach(() => {
-  window.matchMedia = originalMatchMedia;
-});
 const at = (h: number, m = 0) => h * 60 + m;
 
 const flight = (number: string, local: string, over: Partial<Flight> = {}): Flight => ({
@@ -156,42 +135,42 @@ describe('an empty window', () => {
 });
 
 describe('the cards arriving', () => {
-  it('starts them hidden and ends with every one readable', async () => {
-    allowMotion(true);
+  const delayOf = (card: HTMLElement) => parseFloat(card.style.animationDelay);
+
+  it('starts each card after the one before it', () => {
     board();
 
-    // Proves the entrance actually ran, so the assertion below is not
-    // passing because nothing happened.
-    expect(cards()[0].style.opacity).toBe('0');
-
-    // The whole risk of animating an entrance: a board that never finishes
-    // animating is a board nobody can read.
-    await waitFor(
-      () => {
-        for (const card of cards()) expect(card.style.opacity).toBe('');
-      },
-      { timeout: 4000 },
-    );
+    // A sweep across the board rather than every card at once.
+    expect(delayOf(cards()[0])).toBe(0);
+    expect(delayOf(cards()[1])).toBe(STEP_MS);
+    expect(delayOf(cards()[2])).toBe(STEP_MS * 2);
   });
 
-  it('hands the cards back where this component put them', async () => {
-    allowMotion(true);
+  it('stops the stagger before a busy board is still arriving', () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      flight(`BA ${index}`, '2026-09-04T08:00+01:00'),
+    );
+    board(many);
+
+    // Left to add up, the last of sixty would begin over a second after the
+    // first, and the board would feel slow rather than pleased to see you.
+    expect(delayOf(cards().at(-1)!)).toBe(STAGGER_CAP_MS);
+  });
+
+  it('leaves the position on the axis alone', () => {
     board();
 
-    await waitFor(() => {
-      for (const card of cards()) expect(card.style.transform).toBe('');
-    });
-
-    // clearProps takes opacity and transform and nothing else. The position
-    // on the time axis is not the animation to clean up after.
+    // The entrance is opacity and a nudge upward. Where a card belongs on
+    // the time axis is not something for it to clean up after.
     expect(cards()[0].style.left).toBe(`${GUTTER}px`);
     expect(cards()[0].style.top).toBe(`${GUTTER}px`);
   });
 
-  it('sets nothing up at all when motion is unwelcome', () => {
-    allowMotion(false);
+  it('sets no opacity or transform of its own', () => {
     board();
 
+    // Those belong to the animation in the stylesheet. An inline one would
+    // win against it and the cards would never fade in at all.
     for (const card of cards()) {
       expect(card.style.opacity).toBe('');
       expect(card.style.transform).toBe('');
