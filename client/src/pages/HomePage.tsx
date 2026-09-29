@@ -11,10 +11,13 @@ import type { Arrival } from '../lib/flightArrival';
 import FlightBoard from '../components/FlightBoard';
 import SearchCard from '../components/SearchCard';
 import SearchSheet from '../components/SearchSheet';
-import { minutesOfLocal, todayLocal } from '../lib/boardGeometry';
-import { paramsFor, queryFrom, type BoardQuery } from '../lib/searchQuery';
+import { minutesOfLocal } from '../lib/boardGeometry';
+import { paramsFor, queryFrom } from '../lib/searchQuery';
 import { useFlightSearch } from '../hooks/useFlightSearch';
 import { busiestCountry, inCountry, toCountries } from '../lib/countries';
+import { announcementFor } from '../lib/announcement';
+import { emptyBoard, readSearch, writeSearch } from '../lib/boardUrl';
+import { useBoardChrome } from '../hooks/useBoardChrome';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useToast } from '../components/toastContext';
 import type { Flight, SearchParams } from '../models';
@@ -31,39 +34,6 @@ import './HomePage.css';
 
 /** Statuses that describe the whole app rather than this one request. */
 const SITE_WIDE = new Set([429, 503]);
-
-/**
- * The search lives in the query string rather than in component state.
- *
- * That is what makes going back from a flight restore the board instead of an
- * empty one, and it survives a refresh and makes a search shareable, which
- * memory alone cannot do.
- */
-function readSearch(params: URLSearchParams): SearchParams | null {
-  const airport = (params.get('airport') ?? '').toUpperCase();
-  const from = params.get('from') ?? '';
-  const to = params.get('to') ?? '';
-  const direction = params.get('direction') === 'arrival' ? 'arrival' : 'departure';
-
-  // A half written URL should show the empty board, not an error.
-  if (!/^[A-Z]{3}$/.test(airport)) return null;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(from)) return null;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(to)) return null;
-
-  return { airport, direction, fromLocal: from, toLocal: to };
-}
-
-/**
- * What the board shows before anyone has searched.
- *
- * A real date and time, so the ruler has hours on it and the axis is something
- * to look at rather than a blank rectangle. The airport is empty on purpose:
- * that is the field the search hook refuses, so an unsearched board costs
- * nothing.
- */
-function emptyBoard(): BoardQuery {
-  return { airport: '', direction: 'departure', date: todayLocal(), time: '08:00', windowHours: 12 };
-}
 
 export default function HomePage() {
   const showToast = useToast();
@@ -143,31 +113,7 @@ export default function HomePage() {
     setDestination(null);
   }
 
-  /*
-   * What the board takes over from the document while it is on screen.
-   *
-   * The scroll, because the board fills the window and pans itself, and a page
-   * that scrolls as well fights it. And the theme: the board is a dark room
-   * with lit cards in it, and its masthead carries no theme toggle, so a
-   * reader whose system is set to light would get a white board with no way
-   * to change it.
-   *
-   * Both are undone on the way out, so the flight page keeps its scrollbar and
-   * whichever theme the reader actually chose.
-   */
-  useEffect(() => {
-    const html = document.documentElement;
-    const chosen = html.getAttribute('data-theme');
-
-    document.body.classList.add('is-board');
-    html.setAttribute('data-theme', 'dark');
-
-    return () => {
-      document.body.classList.remove('is-board');
-      if (chosen === null) html.removeAttribute('data-theme');
-      else html.setAttribute('data-theme', chosen);
-    };
-  }, []);
+  useBoardChrome();
 
   useEffect(() => {
     // A rate limit or a spent allowance is a condition of the site, not a
@@ -175,26 +121,11 @@ export default function HomePage() {
     if (phase === 'error' && SITE_WIDE.has(httpStatus ?? 0)) showToast({ message: error });
   }, [phase, httpStatus, error, showToast]);
 
-  /** One sentence describing where the search has got to, for a screen reader. */
-  const announcement =
-    phase === 'loading'
-      ? 'Searching flights'
-      : phase === 'done' && result
-        ? result.count === 0
-          ? 'No flights in that window'
-          : destination
-            ? `${flights.length} of ${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'}, to ${destination}`
-            : `${result.count} ${result.direction === 'departure' ? 'departures' : 'arrivals'} at ${result.airport}`
-        : '';
+  const announcement = announcementFor({ phase, result, shown: flights.length, destination });
 
   /** Submitting writes the URL. The hook notices and does the work. */
   function handleSearch(next: SearchParams) {
-    setSearchParams({
-      airport: next.airport,
-      direction: next.direction,
-      from: next.fromLocal,
-      to: next.toLocal,
-    });
+    setSearchParams(writeSearch(next));
   }
 
   const open = (flight: Flight) => setSelectedId(flight.id);
