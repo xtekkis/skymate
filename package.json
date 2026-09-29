@@ -2,7 +2,7 @@
   "name": "skymate",
   "private": true,
   "version": "0.0.0",
-  "description": "AI-powered flight search and travel assistant.",
+  "description": "A departure and arrival board for any airport, with a travel assistant.",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
     "dev:client": "npm --prefix client run dev",
