@@ -356,7 +356,7 @@ export default function FlightDetail({
             >
               {checking ? (
                 <>
-                  <CircleNotch className="search__spinner" size={18} weight="bold" aria-hidden="true" />
+                  <CircleNotch className="submit__spinner" size={18} weight="bold" aria-hidden="true" />
                   Checking
                 </>
               ) : (

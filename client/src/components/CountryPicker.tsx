@@ -135,8 +135,8 @@ export default function CountryPicker({ countries, value, onChange }: CountryPic
   if (countries.length === 0) return null;
 
   return (
-    <div className="picker search__field">
-      <label className="search__label" htmlFor={id}>
+    <div className="picker field">
+      <label className="field__label" htmlFor={id}>
         Showing flights to
       </label>
 
@@ -145,7 +145,7 @@ export default function CountryPicker({ countries, value, onChange }: CountryPic
           type="button"
           id={id}
           ref={buttonRef}
-          className="search__input picker__button"
+          className="input picker__button"
           role="combobox"
           aria-haspopup="listbox"
           aria-expanded={open}

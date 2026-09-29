@@ -29,7 +29,7 @@
  * Tighter than the wide form's fields. At this width a label and its control
  * read as one object, and the roomier spacing made them look unrelated.
  */
-.searchcard .search__field {
+.searchcard .field {
   gap: var(--space-1);
 }
 
@@ -50,7 +50,7 @@
  * differently enough to notice, so the select gives up its own and this
  * replaces it.
  */
-.searchcard__select .search__input {
+.searchcard__select .input {
   appearance: none;
   padding-right: var(--space-6);
 }

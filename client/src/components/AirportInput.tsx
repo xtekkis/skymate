@@ -175,8 +175,8 @@ export default function AirportInput({
   const showList = open && results.length > 0;
 
   return (
-    <div className="search__field airport">
-      <label className="search__label" htmlFor={inputId}>
+    <div className="field airport">
+      <label className="field__label" htmlFor={inputId}>
         Airport
       </label>
 
@@ -184,7 +184,7 @@ export default function AirportInput({
         <input
           id={inputId}
           ref={inputRef}
-          className={`search__input search__input--code tabular${error ? ' search__input--invalid' : ''}`}
+          className={`input input--code tabular${error ? ' input--invalid' : ''}`}
           role="combobox"
           aria-expanded={showList}
           aria-controls={listId}
@@ -238,7 +238,7 @@ export default function AirportInput({
       </div>
 
       {error ? (
-        <p className="search__error" id={noteId} role="alert">
+        <p className="field__error" id={noteId} role="alert">
           <WarningCircle size={14} weight="fill" aria-hidden="true" />
           {error}
         </p>

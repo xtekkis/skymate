@@ -1,18 +1,16 @@
 /*
  * The form controls, shared.
  *
- * These left the search form because they were never really its own: the
- * airport combobox renders .search__field, .search__label and .search__input
- * without importing anything that defines them, and the board is about to do
- * the same. A control that is only styled on pages that happen to render one
- * particular form is a control waiting to appear unstyled somewhere else.
+ * A field is a label, a control and whatever the control has to say about
+ * itself. Four components build one: the search card, the sheet it folds
+ * into, the airport combobox and the country picker.
  *
- * The search__ prefix is inherited rather than chosen. It is no longer
- * accurate now that the board uses these too, and renaming it is a separate
- * change from moving it.
+ * These were named search__ when they belonged to a search form that no
+ * longer exists. Nothing here is about searching: it is what a labelled
+ * control looks like in this app.
  */
 
-.search__field {
+.field {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -22,14 +20,14 @@
   border: none;
 }
 
-.search__label {
+.field__label {
   padding: 0;
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-muted);
 }
 
-.search__input {
+.input {
   height: 44px;
   width: 100%;
   padding: 0 var(--space-3);
@@ -42,23 +40,23 @@
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.search__input:hover {
+.input:hover {
   border-color: var(--text-faint);
 }
 
-.search__input:focus {
+.input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-quiet);
 }
 
-.search__input--code {
+.input--code {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 500;
 }
 
-.search__error {
+.field__error {
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -67,15 +65,15 @@
   color: var(--danger);
 }
 
-.search__error svg {
+.field__error svg {
   flex-shrink: 0;
 }
 
-.search__input--invalid {
+.input--invalid {
   border-color: var(--danger);
 }
 
-.search__input--invalid:focus {
+.input--invalid:focus {
   border-color: var(--danger);
   box-shadow: none;
   outline: 2px solid var(--danger);
@@ -136,7 +134,7 @@
 
 /* Submit */
 
-.search__submit {
+.submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -154,19 +152,19 @@
     translate var(--duration-fast) var(--ease-out);
 }
 
-.search__submit:hover {
+.submit:hover {
   background: var(--accent-hover);
 }
 
-.search__submit:active {
+.submit:active {
   translate: 0 1px;
 }
 
-.search__spinner {
-  animation: search-spin 0.8s linear infinite;
+.submit__spinner {
+  animation: submit-spin 0.8s linear infinite;
 }
 
-@keyframes search-spin {
+@keyframes submit-spin {
   to {
     rotate: 360deg;
   }

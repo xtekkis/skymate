@@ -103,7 +103,7 @@ export default function SearchCard({
   }
 
   function inputClass(field: FieldName, extra = '') {
-    return ['search__input', extra, errors[field] ? 'search__input--invalid' : '']
+    return ['input', extra, errors[field] ? 'input--invalid' : '']
       .filter(Boolean)
       .join(' ');
   }
@@ -127,8 +127,8 @@ export default function SearchCard({
         inputRef={airportRef}
       />
 
-      <fieldset className="search__field">
-        <legend className="search__label">Showing</legend>
+      <fieldset className="field">
+        <legend className="field__label">Showing</legend>
         <div className="segmented">
           {DIRECTIONS.map(({ value, label }) => (
             <label
@@ -155,8 +155,8 @@ export default function SearchCard({
 
       {/* The time is narrower than the date because a time is narrower. */}
       <div className="searchcard__when">
-        <div className="search__field">
-          <label className="search__label" htmlFor="board-date">
+        <div className="field">
+          <label className="field__label" htmlFor="board-date">
             Date
           </label>
           <input
@@ -175,15 +175,15 @@ export default function SearchCard({
             aria-describedby={errors.date ? 'board-date-error' : undefined}
           />
           {errors.date && (
-            <p className="search__error" id="board-date-error" role="alert">
+            <p className="field__error" id="board-date-error" role="alert">
               <WarningCircle size={14} weight="fill" aria-hidden="true" />
               {errors.date}
             </p>
           )}
         </div>
 
-        <div className="search__field">
-          <label className="search__label" htmlFor="board-time">
+        <div className="field">
+          <label className="field__label" htmlFor="board-time">
             From
           </label>
           <input
@@ -202,7 +202,7 @@ export default function SearchCard({
             aria-describedby={errors.time ? 'board-time-error' : undefined}
           />
           {errors.time && (
-            <p className="search__error" id="board-time-error" role="alert">
+            <p className="field__error" id="board-time-error" role="alert">
               <WarningCircle size={14} weight="fill" aria-hidden="true" />
               {errors.time}
             </p>
@@ -210,14 +210,14 @@ export default function SearchCard({
         </div>
       </div>
 
-      <div className="search__field">
-        <label className="search__label" htmlFor="board-window">
+      <div className="field">
+        <label className="field__label" htmlFor="board-window">
           Window
         </label>
         <div className="searchcard__select">
           <select
             id="board-window"
-            className="search__input"
+            className="input"
             value={windowHours}
             onChange={(event) => setWindowHours(Number(event.target.value))}
           >
@@ -236,10 +236,10 @@ export default function SearchCard({
         </div>
       </div>
 
-      <button className="search__submit searchcard__submit" type="submit" disabled={isSearching}>
+      <button className="submit searchcard__submit" type="submit" disabled={isSearching}>
         {isSearching ? (
           <>
-            <CircleNotch className="search__spinner" size={18} weight="bold" aria-hidden="true" />
+            <CircleNotch className="submit__spinner" size={18} weight="bold" aria-hidden="true" />
             Searching
           </>
         ) : (
