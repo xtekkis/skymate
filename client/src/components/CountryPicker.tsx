@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { CaretDown, Check } from '@phosphor-icons/react';
 
-import type { CountryGroup } from './countries';
+import type { CountryGroup } from '../lib/countries';
 
 import './controls.css';
 import './CountryPicker.css';

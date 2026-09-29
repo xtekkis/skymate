@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import CountryPicker from './CountryPicker';
-import type { CountryGroup } from './countries';
+import type { CountryGroup } from '../lib/countries';
 
 const countries: CountryGroup[] = [
   { code: 'US', name: 'United States', count: 42 },

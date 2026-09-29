@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-import { hueFor, toDestinations } from './destinations';
+import { hueFor, toDestinations } from '../lib/destinations';
 
 import type { Flight, FlightDirection } from '../models';
 import './BoardSummary.css';

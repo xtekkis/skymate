@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FlightBoard from './FlightBoard';
-import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from './boardGeometry';
+import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from '../lib/boardGeometry';
 import { STAGGER_CAP_MS, STEP_MS } from './FlightBoard';
 import type { Flight } from '../models';
 

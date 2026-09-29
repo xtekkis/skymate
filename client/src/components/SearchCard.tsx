@@ -2,8 +2,8 @@ import { useRef, useState, type FormEvent } from 'react';
 import { CaretDown, CircleNotch, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
 
 import AirportInput from './AirportInput';
-import { todayLocal } from './boardGeometry';
-import { paramsFor, queryFrom, WINDOWS } from './searchQuery';
+import { todayLocal } from '../lib/boardGeometry';
+import { paramsFor, queryFrom, WINDOWS } from '../lib/searchQuery';
 
 import type { FlightDirection, SearchParams } from '../models';
 import './controls.css';

@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-import { LANE_H, PX_PER_MINUTE, RULER_H, clampPan } from './boardGeometry';
+import { LANE_H, PX_PER_MINUTE, RULER_H, clampPan } from '../lib/boardGeometry';
 
 interface BoardPanOptions {
   stageRef: RefObject<HTMLElement | null>;

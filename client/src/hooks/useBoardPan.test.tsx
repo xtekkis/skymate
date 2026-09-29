@@ -1,8 +1,8 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import BoardStage from './BoardStage';
-import { LANE_H, PX_PER_MINUTE, RULER_H, contentWidth } from './boardGeometry';
+import BoardStage from '../components/BoardStage';
+import { LANE_H, PX_PER_MINUTE, RULER_H, contentWidth } from '../lib/boardGeometry';
 import { STEP_MINUTES, THUMB_MIN } from './useBoardPan';
 
 const at = (h: number, m = 0) => h * 60 + m;

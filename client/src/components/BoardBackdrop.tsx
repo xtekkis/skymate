@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 
-import { useBackdropParallax } from './useBackdropParallax';
-import { useReducedMotion } from './useReducedMotion';
+import { useBackdropParallax } from '../hooks/useBackdropParallax';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 import './BoardBackdrop.css';
 

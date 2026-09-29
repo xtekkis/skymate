@@ -1,9 +1,9 @@
 import { type CSSProperties } from 'react';
 
 import type { Flight } from '../models';
-import { STATUS_LABEL, STATUS_TONE, isBoarding } from './flightStatus';
-import type { Arrival } from './flightArrival';
-import { localTime, revisedTime } from './flightTimes';
+import { STATUS_LABEL, STATUS_TONE, isBoarding } from '../lib/flightStatus';
+import type { Arrival } from '../lib/flightArrival';
+import { localTime, revisedTime } from '../lib/flightTimes';
 import './FlightCard.css';
 
 interface FlightCardProps {

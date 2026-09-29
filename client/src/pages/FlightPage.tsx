@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Broadcast, WarningCircle } from '@phosphor-icons/react';
 
 import type { FlightEndpoint, TrackedFlight } from '../models';
-import { STATUS_LABEL, STATUS_TONE } from '../components/flightStatus';
+import { STATUS_LABEL, STATUS_TONE } from '../lib/flightStatus';
 import { getFlightByNumber, messageFromError } from '../services/api';
 import './FlightPage.css';
 

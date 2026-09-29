@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 
-import { contentWidth, toTicks } from './boardGeometry';
-import { useBoardPan } from './useBoardPan';
+import { contentWidth, toTicks } from '../lib/boardGeometry';
+import { useBoardPan } from '../hooks/useBoardPan';
 import './BoardStage.css';
 
 interface BoardStageProps {

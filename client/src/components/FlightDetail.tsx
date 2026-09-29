@@ -11,11 +11,11 @@ import {
 
 import type { Flight } from '../models';
 import { getFlightByNumber, messageFromError } from '../services/api';
-import { STATUS_LABEL, STATUS_TONE } from './flightStatus';
+import { STATUS_LABEL, STATUS_TONE } from '../lib/flightStatus';
 import { useAssistant } from './assistantContext';
-import { arrivalOf, type Arrival } from './flightArrival';
-import { progressOf } from './flightProgress';
-import { localTime, revisedTime } from './flightTimes';
+import { arrivalOf, type Arrival } from '../lib/flightArrival';
+import { progressOf } from '../lib/flightProgress';
+import { localTime, revisedTime } from '../lib/flightTimes';
 import './FlightDetail.css';
 
 interface FlightDetailProps {

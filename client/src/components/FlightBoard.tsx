@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { Flight } from '../models';
-import type { Arrival } from './flightArrival';
+import type { Arrival } from '../lib/flightArrival';
 import BoardStage from './BoardStage';
 import FlightCard from './FlightCard';
 import {
@@ -16,7 +16,7 @@ import {
   minutesAfter,
   offsetFor,
   nowOffset,
-} from './boardGeometry';
+} from '../lib/boardGeometry';
 import './FlightBoard.css';
 
 /**
