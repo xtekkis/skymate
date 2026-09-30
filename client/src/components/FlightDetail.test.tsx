@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import ChatDrawer from './ChatDrawer';
 import FlightDetail from './FlightDetail';
 import { getFlightByNumber } from '../services/api';
 import { AssistantContext } from './assistantContext';
@@ -638,5 +639,59 @@ describe('an arrival that lands after the panel has moved on', () => {
 
     // Someone else's failure is not this flight's news.
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('escape with the assistant open over it', () => {
+  /** The panel and the drawer together, which is how the board renders them. */
+  function showBoth(onClose = vi.fn()) {
+    render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail flight={flight()} airport="LHR" onClose={onClose} />
+          <ChatDrawer />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    return { onClose, user: userEvent.setup() };
+  }
+
+  const panel = () => screen.queryByRole('dialog', { name: 'BA 117' });
+
+  it('closes the assistant and leaves the flight open', async () => {
+    const { onClose, user } = showBoth();
+
+    await user.click(screen.getByRole('button', { name: 'Travel assistant' }));
+    expect(screen.getByLabelText('Your message')).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // One press used to close both, so shutting the drawer took the flight
+    // being read away with it.
+    await waitFor(() => expect(screen.queryByLabelText('Your message')).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(panel()).toBeTruthy();
+  });
+
+  it('closes the flight once the assistant is out of the way', async () => {
+    const { onClose, user } = showBoth();
+
+    await user.click(screen.getByRole('button', { name: 'Travel assistant' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByLabelText('Your message')).toBeNull());
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // The second press reaches the layer underneath.
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('still closes the flight when nothing is over it', () => {
+    const { onClose } = showBoth();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

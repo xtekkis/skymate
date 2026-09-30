@@ -114,6 +114,7 @@ export default function FlightDetail({
   showing.current = flight.id;
   const titleId = useId();
   const progressId = useId();
+  const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const outbound = flight.direction === 'departure';
@@ -151,7 +152,23 @@ export default function FlightDetail({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+
+      /*
+       * Not when something is open on top of this.
+       *
+       * The assistant opens over the panel and listens for Escape too, so one
+       * press used to close both: the reader shuts the drawer and finds the
+       * flight they were reading gone with it. Whatever else is a dialog is
+       * above this one, since this is the bottom of the two layers a board
+       * can have.
+       */
+      const above = [...document.querySelectorAll('[role="dialog"]')].some(
+        (dialog) => dialog !== panelRef.current,
+      );
+      if (above) return;
+
+      onClose();
     }
 
     document.addEventListener('keydown', onKeyDown);
@@ -225,7 +242,13 @@ export default function FlightDetail({
   ];
 
   return (
-    <aside className="detail" role="dialog" aria-modal="false" aria-labelledby={titleId}>
+    <aside
+      className="detail"
+      ref={panelRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+    >
       <header className="detail__head">
         <div>
           <span className="detail__airline">{flight.airline}</span>
