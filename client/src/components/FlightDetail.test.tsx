@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -501,5 +501,142 @@ describe('an arrival that is already known', () => {
     // So the board can wear it, and so it is never asked twice.
     await waitFor(() => expect(onChecked).toHaveBeenCalledTimes(1));
     expect(onChecked.mock.calls[0][1]).toMatchObject({ status: 'Arrived', time: '11:52' });
+  });
+});
+
+describe('an arrival that lands after the panel has moved on', () => {
+  const leg = (number: string, iata: string, time: string) => ({
+    id: number,
+    number,
+    airline: 'British Airways',
+    status: 'Arrived',
+    departure: { airport: { iata: 'LHR', name: 'Heathrow' }, scheduledTime: '2026-09-01T08:00:00Z' },
+    arrival: { airport: { iata, name: iata }, revisedLocal: `2026-09-01T${time}-04:00` },
+    isCargo: false,
+  });
+
+  /** A request the test decides when to answer. */
+  function deferred() {
+    let settle: (value: unknown) => void = () => {};
+    const promise = new Promise((resolve) => {
+      settle = resolve;
+    });
+    return { promise, settle };
+  }
+
+  function showPanel(flightOver: Partial<Flight>, onChecked = vi.fn()) {
+    const view = render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail
+            flight={flight(flightOver)}
+            airport="LHR"
+            onClose={vi.fn()}
+            onChecked={onChecked}
+          />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    return { view, onChecked, user: userEvent.setup() };
+  }
+
+  beforeEach(() => {
+    lookup.mockReset();
+  });
+
+  it('does not show one flight arrival on another flight panel', async () => {
+    const slow = deferred();
+    lookup.mockReturnValue(slow.promise as never);
+
+    const { view, user } = showPanel({ id: 'a', number: 'BA 117' });
+    await user.click(screen.getByRole('button', { name: 'Check arrival' }));
+
+    // The reader presses another card while the first answer is in the air.
+    view.rerender(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail
+            flight={flight({ id: 'b', number: 'BA 999' })}
+            airport="LHR"
+            onClose={vi.fn()}
+            onChecked={vi.fn()}
+          />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      slow.settle({ number: 'BA 117', count: 1, flights: [leg('BA 117', 'JFK', '11:52')] });
+    });
+
+    // BA 117 landed at JFK. BA 999 did not, and must not say it did.
+    const arrival = screen.getByRole('region', { name: 'Arrival' });
+    expect(arrival.textContent).not.toContain('JFK');
+    expect(within(arrival).getByRole('button', { name: 'Check arrival' })).toBeTruthy();
+  });
+
+  it('still remembers it for the flight that asked', async () => {
+    const slow = deferred();
+    lookup.mockReturnValue(slow.promise as never);
+
+    const onChecked = vi.fn();
+    const { view, user } = showPanel({ id: 'a', number: 'BA 117' }, onChecked);
+    await user.click(screen.getByRole('button', { name: 'Check arrival' }));
+
+    view.rerender(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail
+            flight={flight({ id: 'b', number: 'BA 999' })}
+            airport="LHR"
+            onClose={vi.fn()}
+            onChecked={onChecked}
+          />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      slow.settle({ number: 'BA 117', count: 1, flights: [leg('BA 117', 'JFK', '11:52')] });
+    });
+
+    // The unit was spent and the answer is true. The board wears it on BA
+    // 117's card, and a second look at that flight costs nothing.
+    expect(onChecked).toHaveBeenCalledTimes(1);
+    expect(onChecked.mock.calls[0][0].id).toBe('a');
+    expect(onChecked.mock.calls[0][1]).toMatchObject({ airport: { iata: 'JFK' } });
+  });
+
+  it('does not report a failure onto the flight that is showing', async () => {
+    const slow = deferred();
+    lookup.mockReturnValue(
+      slow.promise.then(() => {
+        throw new Error('offline');
+      }) as never,
+    );
+
+    const { view, user } = showPanel({ id: 'a', number: 'BA 117' });
+    await user.click(screen.getByRole('button', { name: 'Check arrival' }));
+
+    view.rerender(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail
+            flight={flight({ id: 'b', number: 'BA 999' })}
+            airport="LHR"
+            onClose={vi.fn()}
+            onChecked={vi.fn()}
+          />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      slow.settle(null);
+    });
+
+    // Someone else's failure is not this flight's news.
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

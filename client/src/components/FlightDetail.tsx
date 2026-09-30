@@ -102,6 +102,16 @@ export default function FlightDetail({
   const [arrival, setArrival] = useState<Arrival | null>(known);
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState('');
+
+  /*
+   * Which flight the panel is on, readable from inside a request that started
+   * on another one.
+   *
+   * Written during render rather than in an effect, so an answer that arrives
+   * between a card being pressed and the effect running still sees the truth.
+   */
+  const showing = useRef(flight.id);
+  showing.current = flight.id;
   const titleId = useId();
   const progressId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -151,13 +161,28 @@ export default function FlightDetail({
   async function checkArrival() {
     if (checking) return;
 
+    // The flight this answer will be about, whatever the panel shows by then.
+    const asked = flight;
+
     setChecking(true);
     setCheckFailed('');
 
     try {
-      const date = flight.scheduledLocal?.slice(0, 10);
-      const { flights: legs } = await getFlightByNumber(flight.number, date);
-      const found = arrivalOf(flight, legs);
+      const date = asked.scheduledLocal?.slice(0, 10);
+      const { flights: legs } = await getFlightByNumber(asked.number, date);
+      const found = arrivalOf(asked, legs);
+
+      /*
+       * Reported whatever is on screen now: the answer is true about the
+       * flight that asked, and the board remembers it by that flight's id, so
+       * pressing a card and moving on still fills its card in and still
+       * spares the next look a second unit.
+       */
+      if (found) onChecked?.(asked, found);
+
+      // Shown only if the panel is still on that flight. Another card was
+      // pressed while this was in the air, and its landing is not this one.
+      if (showing.current !== asked.id) return;
 
       if (!found) {
         setCheckFailed('That flight is not being tracked today.');
@@ -165,11 +190,11 @@ export default function FlightDetail({
       }
 
       setArrival(found);
-      onChecked?.(flight, found);
     } catch (caught) {
+      if (showing.current !== asked.id) return;
       setCheckFailed(messageFromError(caught));
     } finally {
-      setChecking(false);
+      if (showing.current === asked.id) setChecking(false);
     }
   }
 
