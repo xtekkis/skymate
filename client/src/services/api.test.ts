@@ -1,5 +1,5 @@
 import { AxiosError, type AxiosResponse } from 'axios';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { errorStatus, messageFromError } from './api';
 
@@ -102,5 +102,46 @@ describe('turning a failure into something worth showing', () => {
     expect(messageFromError(null)).toBe(GENERIC);
     expect(messageFromError(undefined)).toBe(GENERIC);
     expect(messageFromError({ nothing: true })).toBe(GENERIC);
+  });
+});
+
+describe('where the requests go', () => {
+  /*
+   * The base is read once when the module loads, so each case needs the
+   * module loaded again with a different environment.
+   */
+  async function baseWith(url?: string) {
+    vi.resetModules();
+
+    if (url === undefined) vi.stubEnv('VITE_API_URL', '');
+    else vi.stubEnv('VITE_API_URL', url);
+
+    const { api } = await import('./api');
+    return api.defaults.baseURL;
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('is this origin when nothing says otherwise', async () => {
+    // Development, and anywhere the two halves are served together.
+    expect(await baseWith()).toBe('/api');
+  });
+
+  it('is wherever the build was told the API lives', async () => {
+    // Deployed apart, a static site has no /api of its own: asking for one
+    // returns its index.html and every call fails as a parse error.
+    expect(await baseWith('https://skymate-api.onrender.com/api')).toBe(
+      'https://skymate-api.onrender.com/api',
+    );
+  });
+
+  it('does not mind a trailing slash', async () => {
+    // Left on, every path would be doubled: /api//flights.
+    expect(await baseWith('https://skymate-api.onrender.com/api/')).toBe(
+      'https://skymate-api.onrender.com/api',
+    );
   });
 });

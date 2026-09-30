@@ -9,9 +9,22 @@ import type {
   TrackedFlight,
 } from '../models';
 
-/** Requests go to /api and are proxied to the Express server in dev (see vite.config.ts). */
+/**
+ * Where the API is.
+ *
+ * In development, and anywhere the two halves share an origin, /api is right
+ * and Vite proxies it to the Express server (see vite.config.ts).
+ *
+ * Deployed apart they do not share an origin: a static site has no /api of
+ * its own, so asking for one returns the site's own index.html and every
+ * request fails as a parse error rather than as a missing server. That is
+ * what VITE_API_URL is for, read at build time like every Vite variable, so
+ * it must be set wherever the client is built rather than where it is served.
+ */
+const BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || '/api';
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
