@@ -618,3 +618,25 @@ describe('showing one country at a time', () => {
     expect(chooser.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe('a search that failed', () => {
+  it('leaves no board behind it', async () => {
+    flights.mockRejectedValue(new Error('offline'));
+
+    show(SEARCH);
+    await screen.findByRole('alert');
+
+    // Whatever the hook hands over is what gets drawn, so a board built from
+    // nothing is the page's half of not showing one airport under another.
+    expect(document.querySelectorAll('.stage__canvas .card')).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: 'What is on the board' })).toBeNull();
+  });
+
+  it('says so where it can be read', async () => {
+    flights.mockRejectedValue(new Error('offline'));
+
+    show(SEARCH);
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Search failed');
+  });
+});

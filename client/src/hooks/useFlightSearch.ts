@@ -46,6 +46,17 @@ export function useFlightSearch({ airport, direction, fromLocal, toLocal }: Sear
     setError('');
     setStatus(undefined);
 
+    /*
+     * The old flights go now, not when the new ones arrive.
+     *
+     * The masthead names the airport from the URL, which changes the moment
+     * Search is pressed, so holding the last window a moment longer puts one
+     * airport's cards under another airport's name. On a failure it is worse:
+     * the board sits there indefinitely, saying CDG and showing LHR, with the
+     * only hint a small notice in the sidebar.
+     */
+    setResult(null);
+
     searchFlights(params)
       .then((data) => {
         if (id !== latest.current) return;

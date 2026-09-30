@@ -165,3 +165,37 @@ describe('when it fails', () => {
     expect(read('error')).toBe('Something went wrong. Try again.');
   });
 });
+
+describe('the window it is leaving behind', () => {
+  const CDG: SearchParams = { ...PARAMS, airport: 'CDG' };
+
+  it('is gone the moment another one is asked for', async () => {
+    flights.mockResolvedValue(response(7));
+    const view = show();
+    await waitFor(() => expect(read('count')).toBe('7'));
+
+    // Never settles, so what is on screen is what the hook shows while it waits.
+    flights.mockImplementation(() => new Promise(() => {}));
+    view.rerender(<Probe {...CDG} />);
+
+    // The masthead names the airport from the URL, which changed already, so
+    // holding these a moment longer puts LHR's flights under CDG's name.
+    expect(read('count')).toBe('-');
+    expect(read('phase')).toBe('loading');
+  });
+
+  it('is gone when the next one fails', async () => {
+    flights.mockResolvedValue(response(7));
+    const view = show();
+    await waitFor(() => expect(read('count')).toBe('7'));
+
+    flights.mockRejectedValue(new Error('offline'));
+    view.rerender(<Probe {...CDG} />);
+
+    await waitFor(() => expect(read('phase')).toBe('error'));
+
+    // Otherwise the board sits there indefinitely showing the wrong airport,
+    // with a small notice in the sidebar as the only hint.
+    expect(read('count')).toBe('-');
+  });
+});
