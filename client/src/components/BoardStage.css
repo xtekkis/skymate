@@ -11,6 +11,13 @@
   cursor: grab;
   /* The board takes the gesture itself; the page has nowhere to scroll to. */
   touch-action: none;
+  /*
+   * The whole surface is draggable, and a drag across cards would otherwise
+   * paint them blue on the way past: the browser reads it as selecting text.
+   * Nothing here is worth selecting anyway, and a flight's own details are
+   * still selectable in the panel it opens.
+   */
+  user-select: none;
 }
 
 /* The ruler */
