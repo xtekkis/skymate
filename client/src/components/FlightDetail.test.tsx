@@ -695,3 +695,47 @@ describe('escape with the assistant open over it', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the progress once the arrival has been checked', () => {
+  const enRoute = {
+    status: 'EnRoute' as const,
+    time: '11:52',
+    kind: 'Revised' as const,
+    airport: { iata: 'JFK', name: 'Kennedy', municipality: 'New York' },
+  };
+
+  function showArriving(arrival?: typeof enRoute) {
+    render(
+      <MemoryRouter>
+        <AssistantContext.Provider value={{ request: null, ask: vi.fn() }}>
+          <FlightDetail
+            flight={flight({ direction: 'arrival', status: 'Expected' })}
+            airport="LHR"
+            onClose={vi.fn()}
+            arrival={arrival}
+          />
+        </AssistantContext.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  const stages = () =>
+    within(screen.getByRole('region', { name: 'Progress' })).queryAllByRole('listitem');
+
+  it('lights what the check revealed', () => {
+    showArriving(enRoute);
+
+    // The panel used to say En route in one block and show nothing reached in
+    // the next, which is the same panel disagreeing with itself.
+    const [departed, route] = stages();
+    expect(departed.textContent).toContain('done');
+    expect(route.textContent).toContain('done');
+  });
+
+  it('shows nothing reached until it is checked', () => {
+    showArriving();
+
+    // Honest: the arrivals board genuinely does not know where it is.
+    for (const stage of stages()) expect(stage.textContent).toContain('not yet');
+  });
+});

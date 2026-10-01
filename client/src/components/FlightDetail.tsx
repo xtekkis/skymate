@@ -219,7 +219,9 @@ export default function FlightDetail({
 
   const scheduled = localTime(flight.scheduledLocal);
   const revised = revisedTime(flight);
-  const progress = progressOf(flight);
+  // The checked arrival, when there is one: the panel should not say En
+  // route in one block and show nothing reached in the next.
+  const progress = progressOf(flight, arrival?.status);
 
   /*
    * Only what the board actually carries. The design this comes from had a

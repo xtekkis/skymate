@@ -192,3 +192,42 @@ describe('a flight that is not going to finish', () => {
     }
   });
 });
+
+describe('a status learned by checking the arrival', () => {
+  it('lights the journey an arrivals board could not see', () => {
+    // An arrivals board calls a flight still in the air Expected, because the
+    // airport it is landing at knows nothing else about it yet.
+    const unchecked = progressOf(flight('Expected', 'arrival'));
+    expect(unchecked.kind === 'steps' && unchecked.current).toBe(-1);
+
+    const checked = progressOf(flight('Expected', 'arrival'), 'EnRoute');
+    if (checked.kind !== 'steps') throw new Error('stopped rather than stepping');
+
+    expect(checked.steps.filter((step) => step.reached).map((step) => step.label)).toEqual([
+      'Departed',
+      'En route',
+    ]);
+  });
+
+  it('wins over the board on a departure too', () => {
+    const checked = progressOf(flight('Departed'), 'Arrived');
+    if (checked.kind !== 'steps') throw new Error('stopped rather than stepping');
+
+    expect(checked.steps.every((step) => step.reached)).toBe(true);
+  });
+
+  it('can say the flight is not going to finish', () => {
+    expect(progressOf(flight('Expected', 'arrival'), 'Diverted')).toEqual({
+      kind: 'stopped',
+      label: 'Diverted',
+      tone: 'warn',
+    });
+  });
+
+  it('leaves the board status alone when nothing was checked', () => {
+    const board = progressOf(flight('Boarding'));
+    if (board.kind !== 'steps') throw new Error('stopped rather than stepping');
+
+    expect(board.steps.filter((step) => step.reached)).toHaveLength(2);
+  });
+});

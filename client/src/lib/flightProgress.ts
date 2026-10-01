@@ -55,12 +55,20 @@ const ARRIVAL_STAGE: Partial<Record<FlightStatus, number>> = {
   Arrived: 4,
 };
 
-export function progressOf(flight: Flight): Progress {
-  if (flight.status === 'Canceled') return { kind: 'stopped', label: 'Cancelled', tone: 'danger' };
-  if (flight.status === 'Diverted') return { kind: 'stopped', label: 'Diverted', tone: 'warn' };
+/**
+ * @param checked the status the per-flight lookup reported, when one has been
+ *   asked for. A board only knows its own end: an arrivals board calls a
+ *   flight still in the air "Expected", and only the lookup says "En route".
+ *   Where the two disagree the lookup is the newer and larger truth.
+ */
+export function progressOf(flight: Flight, checked?: FlightStatus): Progress {
+  const status = checked ?? flight.status;
+
+  if (status === 'Canceled') return { kind: 'stopped', label: 'Cancelled', tone: 'danger' };
+  if (status === 'Diverted') return { kind: 'stopped', label: 'Diverted', tone: 'warn' };
 
   const outbound = flight.direction === 'departure';
-  const stage = (outbound ? DEPARTURE_STAGE : ARRIVAL_STAGE)[flight.status] ?? 0;
+  const stage = (outbound ? DEPARTURE_STAGE : ARRIVAL_STAGE)[status] ?? 0;
 
   const time = {
     scheduled: localTime(flight.scheduledLocal),
