@@ -38,11 +38,14 @@ not what it costs.
 
 ## Built with
 
-React 19 and TypeScript on Vite, an Express API, GSAP and Framer Motion for the
+React 19 and TypeScript on Vite, an Express API, Framer Motion for the
 movement, and Phosphor for the icons. Flight schedules and status come from
 AeroDataBox. The assistant runs on Claude, with a Groq model behind it.
 
 ## Hosting
 
-A hosted version is on the way. There is nothing to set up in the meantime: the
-link will go here once it is live.
+https://skymate-eo9a.onrender.com
+
+Both halves run on Render's free tier, which sleeps the API when nobody is
+using it. The first search after a quiet spell takes a minute while it wakes,
+and everything after that is quick.
