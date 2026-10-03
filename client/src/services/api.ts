@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 import type {
   Airport,
   Flight,
@@ -21,12 +19,81 @@ import type {
  * what VITE_API_URL is for, read at build time like every Vite variable, so
  * it must be set wherever the client is built rather than where it is served.
  */
-const BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || '/api';
+export const apiBase = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || '/api';
 
-export const api = axios.create({
-  baseURL: BASE,
-  headers: { 'Content-Type': 'application/json' },
-});
+/** Shape the Express error handlers return. */
+interface ApiErrorBody {
+  error: string;
+  details?: string[];
+}
+
+/**
+ * A request that did not work.
+ *
+ * Carries the status when something answered and nothing when nothing did,
+ * which is the difference between a condition of the site, such as the flight
+ * allowance being spent, and a dead connection.
+ */
+export class ApiError extends Error {
+  readonly status?: number;
+  readonly body?: ApiErrorBody;
+
+  constructor(message: string, { status, body }: { status?: number; body?: ApiErrorBody } = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+type Query = Record<string, string | undefined>;
+
+function urlFor(path: string, query?: Query) {
+  // A relative base resolves against the page; an absolute one ignores the
+  // second argument entirely, so both forms go through the same line.
+  const url = new URL(`${apiBase}${path}`, window.location.origin);
+
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value !== undefined) url.searchParams.set(key, value);
+  }
+
+  return url;
+}
+
+/**
+ * One request, and every way it can fail.
+ *
+ * A GET carries no Content-Type. That header is not on the list a browser
+ * will send cross-origin without asking first, so putting it on a GET turns
+ * every search into two round trips: a preflight and then the request. There
+ * is no body on a GET to describe anyway.
+ */
+async function request<T>(path: string, { query, body }: { query?: Query; body?: unknown } = {}) {
+  let response: Response;
+
+  try {
+    response = await fetch(urlFor(path, query), {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    // fetch only rejects when nothing answered at all.
+    throw new ApiError('The request never reached the server.');
+  }
+
+  if (!response.ok) {
+    // A failure that is not JSON is a failure all the same, and the page has
+    // its own wording for one it cannot read.
+    const parsed = await response.json().catch(() => undefined);
+    throw new ApiError(`The server answered ${response.status}.`, {
+      status: response.status,
+      body: parsed as ApiErrorBody | undefined,
+    });
+  }
+
+  return (await response.json()) as T;
+}
 
 export interface HealthResponse {
   status: string;
@@ -39,8 +106,7 @@ export interface HealthResponse {
 }
 
 export async function getHealth(): Promise<HealthResponse> {
-  const { data } = await api.get<HealthResponse>('/health');
-  return data;
+  return request<HealthResponse>('/health');
 }
 
 export interface FlightSearchResponse {
@@ -53,16 +119,14 @@ export interface FlightSearchResponse {
 }
 
 export async function searchFlights(params: SearchParams): Promise<FlightSearchResponse> {
-  const { data } = await api.get<FlightSearchResponse>('/flights', {
-    params: {
+  return request<FlightSearchResponse>('/flights', {
+    query: {
       airport: params.airport,
       direction: params.direction,
       from: params.fromLocal,
       to: params.toLocal,
     },
   });
-
-  return data;
 }
 
 export interface ChatResponse {
@@ -82,12 +146,14 @@ export async function sendChat(
   messages: Pick<Message, 'role' | 'content'>[],
   airport?: string,
 ): Promise<string> {
-  const { data } = await api.post<ChatResponse>('/chat', {
-    messages: messages.map(({ role, content }) => ({ role, content })),
-    ...(airport ? { airport } : {}),
+  const { reply } = await request<ChatResponse>('/chat', {
+    body: {
+      messages: messages.map(({ role, content }) => ({ role, content })),
+      ...(airport ? { airport } : {}),
+    },
   });
 
-  return data.reply;
+  return reply;
 }
 
 export interface FlightNumberResponse {
@@ -102,12 +168,9 @@ export async function getFlightByNumber(
   number: string,
   date?: string,
 ): Promise<FlightNumberResponse> {
-  const { data } = await api.get<FlightNumberResponse>(
-    `/flights/number/${encodeURIComponent(number)}`,
-    date ? { params: { date } } : undefined,
-  );
-
-  return data;
+  return request<FlightNumberResponse>(`/flights/number/${encodeURIComponent(number)}`, {
+    query: { date },
+  });
 }
 
 export interface AirportSearchResponse {
@@ -118,14 +181,8 @@ export interface AirportSearchResponse {
 
 /** Runs against bundled data on our server, so it costs no upstream quota. */
 export async function searchAirports(query: string): Promise<Airport[]> {
-  const { data } = await api.get<AirportSearchResponse>('/airports', { params: { q: query } });
-  return data.airports;
-}
-
-/** Shape the Express error handlers return. */
-interface ApiErrorBody {
-  error: string;
-  details?: string[];
+  const { airports } = await request<AirportSearchResponse>('/airports', { query: { q: query } });
+  return airports;
 }
 
 /**
@@ -135,7 +192,7 @@ interface ApiErrorBody {
  * spent, from something wrong with this one request.
  */
 export function errorStatus(error: unknown): number | undefined {
-  return axios.isAxiosError(error) ? error.response?.status : undefined;
+  return error instanceof ApiError ? error.status : undefined;
 }
 
 /**
@@ -144,10 +201,10 @@ export function errorStatus(error: unknown): number | undefined {
  * text over anything invented here.
  */
 export function messageFromError(error: unknown): string {
-  if (axios.isAxiosError<ApiErrorBody>(error)) {
-    if (error.code === 'ERR_NETWORK') return 'Could not reach the server. Is it running?';
+  if (error instanceof ApiError) {
+    if (error.status === undefined) return 'Could not reach the server. Is it running?';
 
-    const body = error.response?.data;
+    const body = error.body;
     if (body?.details?.length) return body.details.join('. ');
     if (body?.error) return body.error;
   }

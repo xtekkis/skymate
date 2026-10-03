@@ -1,10 +1,9 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useFlightSearch } from './useFlightSearch';
 import type { SearchParams } from '../models';
-import { searchFlights } from '../services/api';
+import { ApiError, searchFlights } from '../services/api';
 
 vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../services/api')>()),
@@ -141,13 +140,10 @@ describe('when nothing can be asked', () => {
 describe('when it fails', () => {
   it('reports the wording and the status behind it', async () => {
     flights.mockRejectedValue(
-      new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+      new ApiError('The server answered 503.', {
         status: 503,
-        data: { error: 'The monthly flight data allowance is used up.' },
-        statusText: '',
-        headers: {},
-        config: { headers: {} },
-      } as AxiosResponse),
+        body: { error: 'The monthly flight data allowance is used up.' },
+      }),
     );
     show();
 

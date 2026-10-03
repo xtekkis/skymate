@@ -1,26 +1,26 @@
-import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { errorStatus, messageFromError } from './api';
+import {
+  ApiError,
+  errorStatus,
+  getFlightByNumber,
+  messageFromError,
+  searchAirports,
+  searchFlights,
+  sendChat,
+} from './api';
 
 /**
  * The two functions that decide what every failure in this app says to a
  * person, and what it declines to say.
  */
 
-/** An axios error carrying a response, the way a 4xx from our server arrives. */
-function withResponse(status: number, data: unknown) {
-  return new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
-    status,
-    data,
-    statusText: '',
-    headers: {},
-    config: { headers: {} },
-  } as AxiosResponse);
-}
+/** A failure the server answered, the way a 4xx from our routes arrives. */
+const withResponse = (status: number, body: unknown) =>
+  new ApiError(`The server answered ${status}.`, { status, body: body as never });
 
-/** An axios error with no response at all: nothing answered. */
-const noAnswer = () => new AxiosError('Network Error', AxiosError.ERR_NETWORK);
+/** A failure where nothing answered at all. */
+const noAnswer = () => new ApiError('The request never reached the server.');
 
 const GENERIC = 'Something went wrong. Try again.';
 
@@ -116,8 +116,8 @@ describe('where the requests go', () => {
     if (url === undefined) vi.stubEnv('VITE_API_URL', '');
     else vi.stubEnv('VITE_API_URL', url);
 
-    const { api } = await import('./api');
-    return api.defaults.baseURL;
+    const { apiBase } = await import('./api');
+    return apiBase;
   }
 
   afterEach(() => {
@@ -143,5 +143,118 @@ describe('where the requests go', () => {
     expect(await baseWith('https://skymate-api.onrender.com/api/')).toBe(
       'https://skymate-api.onrender.com/api',
     );
+  });
+});
+
+describe('making a request', () => {
+  const realFetch = globalThis.fetch;
+  let calls: { url: URL; init: RequestInit }[];
+
+  /** Answers every request with this, and records what was asked. */
+  function answerWith(status: number, body: unknown, { json = true } = {}) {
+    calls = [];
+
+    globalThis.fetch = ((input: URL, init: RequestInit) => {
+      calls.push({ url: new URL(String(input)), init });
+
+      return Promise.resolve({
+        ok: status >= 200 && status < 300,
+        status,
+        json: () => (json ? Promise.resolve(body) : Promise.reject(new Error('not json'))),
+      } as Response);
+    }) as typeof globalThis.fetch;
+  }
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  const window = {
+    airport: 'LHR',
+    direction: 'departure' as const,
+    fromLocal: '2026-09-01T08:00',
+    toLocal: '2026-09-01T12:00',
+  };
+
+  it('asks the API for what was wanted, with the search in the query', async () => {
+    answerWith(200, { airport: 'LHR', count: 0, flights: [] });
+
+    await searchFlights(window);
+
+    const { url } = calls[0];
+    expect(url.pathname.endsWith('/flights')).toBe(true);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      airport: 'LHR',
+      direction: 'departure',
+      from: '2026-09-01T08:00',
+      to: '2026-09-01T12:00',
+    });
+  });
+
+  it('sends no content type on a GET', async () => {
+    answerWith(200, { query: 'lon', count: 0, airports: [] });
+
+    await searchAirports('lon');
+
+    // Not a header a browser will send cross-origin without asking first, so
+    // putting it on a GET turns every search into two round trips.
+    expect(calls[0].init.headers).toBeUndefined();
+    expect(calls[0].init.method).toBe('GET');
+  });
+
+  it('leaves out a parameter that was not given', async () => {
+    answerWith(200, { number: 'BA117', count: 0, flights: [] });
+
+    await getFlightByNumber('BA 117');
+
+    expect(calls[0].url.searchParams.has('date')).toBe(false);
+    // And escapes the one that was, since a flight number carries a space.
+    expect(calls[0].url.pathname.endsWith('/flights/number/BA%20117')).toBe(true);
+  });
+
+  it('posts a conversation as JSON', async () => {
+    answerWith(200, { reply: 'Two hours.' });
+
+    const reply = await sendChat([{ role: 'user', content: 'How early?' }], 'LHR');
+
+    expect(calls[0].init.method).toBe('POST');
+    expect(calls[0].init.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      messages: [{ role: 'user', content: 'How early?' }],
+      airport: 'LHR',
+    });
+    expect(reply).toBe('Two hours.');
+  });
+
+  it('turns a refusal into the error the pages already understand', async () => {
+    answerWith(503, { error: 'The monthly flight data allowance is used up.' });
+
+    const failure = await searchFlights(window).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(errorStatus(failure)).toBe(503);
+    expect(messageFromError(failure)).toBe('The monthly flight data allowance is used up.');
+  });
+
+  it('survives a failure that is not JSON', async () => {
+    // A proxy or a host answering with HTML is still a failure, and the page
+    // has its own wording for one it cannot read.
+    answerWith(502, undefined, { json: false });
+
+    const failure = await searchFlights(window).catch((error: unknown) => error);
+
+    expect(errorStatus(failure)).toBe(502);
+    expect(messageFromError(failure)).toBe(GENERIC);
+  });
+
+  it('says nothing answered when nothing did', async () => {
+    calls = [];
+    globalThis.fetch = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof globalThis.fetch;
+
+    const failure = await searchFlights(window).catch((error: unknown) => error);
+
+    // No status is what tells a dead connection from a site-wide condition.
+    expect(errorStatus(failure)).toBeUndefined();
+    expect(messageFromError(failure)).toBe('Could not reach the server. Is it running?');
   });
 });
