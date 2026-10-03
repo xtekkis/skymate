@@ -285,6 +285,7 @@ export default function HomePage() {
             onOpen={open}
             selectedId={selectedId}
             arrivals={arrivals}
+            loading={phase === 'loading'}
           />
         </>
       )}

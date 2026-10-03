@@ -640,3 +640,26 @@ describe('a search that failed', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('Search failed');
   });
 });
+
+describe('the board between pressing search and the answer', () => {
+  it('fills with placeholders rather than going blank', async () => {
+    // Never settles, so the page stays in the state it shows while waiting.
+    flights.mockImplementation(() => new Promise(() => {}));
+
+    show(SEARCH);
+
+    await waitFor(() => expect(document.querySelectorAll('.card--ghost').length).toBeGreaterThan(0));
+    expect(document.querySelectorAll('.stage__canvas .card:not(.card--ghost)')).toHaveLength(0);
+  });
+
+  it('shows none of them once a search has failed', async () => {
+    flights.mockRejectedValue(new Error('offline'));
+
+    show(SEARCH);
+    await screen.findByRole('alert');
+
+    // Waiting and failing are different things, and only one of them is
+    // about to produce flights.
+    expect(document.querySelectorAll('.card--ghost')).toHaveLength(0);
+  });
+});

@@ -52,3 +52,39 @@
   color: var(--accent);
   white-space: nowrap;
 }
+
+/*
+ * A card with nothing in it yet.
+ *
+ * The board empties the moment a search starts, because holding the last
+ * window puts one airport's flights under another airport's name. These stand
+ * in the gap so the board reads as filling rather than as broken.
+ *
+ * It borrows the card's own size and corners and replaces only the surface,
+ * so the real cards land exactly where these were.
+ */
+.card--ghost {
+  height: 92px;
+  background:
+    linear-gradient(
+      90deg,
+      var(--surface) 25%,
+      color-mix(in oklch, var(--surface) 70%, var(--border)) 37%,
+      var(--surface) 63%
+    );
+  background-size: 400% 100%;
+  animation:
+    card-arrive 320ms var(--ease-out) both,
+    ghost-sweep 1.4s ease-in-out infinite;
+  cursor: default;
+  pointer-events: none;
+}
+
+@keyframes ghost-sweep {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0 50%;
+  }
+}

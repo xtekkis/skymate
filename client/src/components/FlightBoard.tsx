@@ -6,6 +6,7 @@ import BoardStage from './BoardStage';
 import FlightCard from './FlightCard';
 import {
   CARD_W,
+  GUTTER,
   assignLanes,
   contentHeight,
   laneCountFor,
@@ -37,6 +38,15 @@ export const STEP_MS = 22;
 export const STAGGER_CAP_MS = 320;
 
 /**
+ * How many placeholders stand in while a search runs.
+ *
+ * Enough to read as a board filling rather than as a board, which is why they
+ * are spread across lanes instead of lined up: the shape says "flights are
+ * coming" without implying how many or when.
+ */
+export const GHOSTS = 6;
+
+/**
  * How often the now line catches up with the clock.
  *
  * At the board scale thirty seconds is under two pixels, so it creeps
@@ -55,6 +65,8 @@ interface FlightBoardProps {
   windowHours: number;
   selectedId?: string | null;
   onOpen: (flight: Flight) => void;
+  /** A search is in flight, so there is nothing real to draw yet. */
+  loading?: boolean;
   /** What has been checked so far, by flight id. Empty until someone asks. */
   arrivals?: Record<string, Arrival>;
 }
@@ -74,6 +86,7 @@ export default function FlightBoard({
   selectedId = null,
   onOpen,
   arrivals = {},
+  loading = false,
 }: FlightBoardProps) {
   const [stageHeight, setStageHeight] = useState(0);
   const [minute, setMinute] = useState(() => Date.now());
@@ -127,6 +140,26 @@ export default function FlightBoard({
           <span className="now__label">Now</span>
         </div>
       )}
+
+      {/*
+       * Hidden from a screen reader: the page's live region already says a
+       * search is running, and six empty shapes add nothing to that.
+       */}
+      {loading &&
+        Array.from({ length: GHOSTS }, (_, index) => (
+          <div
+            key={index}
+            className="card card--ghost"
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: GUTTER + index * (CARD_W + GUTTER),
+              top: laneTop(index % 3),
+              width: CARD_W,
+              animationDelay: `${Math.min(STAGGER_CAP_MS, index * STEP_MS)}ms`,
+            }}
+          />
+        ))}
 
       {flights.map((flight, index) => (
         <FlightCard

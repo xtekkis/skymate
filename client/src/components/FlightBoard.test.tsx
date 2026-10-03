@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FlightBoard from './FlightBoard';
 import { CARD_W, GUTTER, LANE_H, PX_PER_MINUTE } from '../lib/boardGeometry';
-import { STAGGER_CAP_MS, STEP_MS } from './FlightBoard';
+import { GHOSTS, STAGGER_CAP_MS, STEP_MS } from './FlightBoard';
 import type { Flight } from '../models';
 
 const at = (h: number, m = 0) => h * 60 + m;
@@ -310,5 +310,65 @@ describe('a flight scheduled outside the window', () => {
     const canvas = document.querySelector<HTMLElement>('.stage__canvas')!;
     // Wide enough that the card is not past the edge of what can be panned to.
     expect(parseFloat(canvas.style.width)).toBeGreaterThan(leftOf('BA 7') + CARD_W);
+  });
+});
+
+describe('while a search is running', () => {
+  function searching(flights: Flight[] = []) {
+    render(
+      <FlightBoard
+        flights={flights}
+        date="2026-09-04"
+        start={at(8)}
+        windowHours={4}
+        onOpen={vi.fn()}
+        loading
+      />,
+    );
+  }
+
+  const ghosts = () => Array.from(document.querySelectorAll('.card--ghost'));
+
+  it('stands cards in for the ones on their way', () => {
+    searching();
+
+    // The board empties the moment a search starts, so without these it is a
+    // blank rectangle and nothing says the difference between waiting and
+    // finding nothing.
+    expect(ghosts()).toHaveLength(GHOSTS);
+  });
+
+  it('spreads them across lanes rather than lining them up', () => {
+    searching();
+
+    const tops = new Set(ghosts().map((ghost) => (ghost as HTMLElement).style.top));
+    expect(tops.size).toBeGreaterThan(1);
+  });
+
+  it('says nothing to a screen reader', () => {
+    searching();
+
+    // The page's live region already says a search is running, and six empty
+    // shapes add nothing to that.
+    for (const ghost of ghosts()) expect(ghost.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('cannot be pressed for a flight that is not there', () => {
+    searching();
+
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('is gone once the flights arrive', () => {
+    board();
+
+    expect(ghosts()).toHaveLength(0);
+    expect(cards()).toHaveLength(hourly.length);
+  });
+
+  it('arrives in the same sweep the real cards do', () => {
+    searching();
+
+    expect(parseFloat((ghosts()[1] as HTMLElement).style.animationDelay)).toBe(STEP_MS);
   });
 });
